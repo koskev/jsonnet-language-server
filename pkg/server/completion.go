@@ -89,6 +89,10 @@ func (s *Server) completionFromStack(line string, stack *nodestack.NodeStack, vm
 				binds = typedCurr.Locals
 			case *ast.Local:
 				binds = typedCurr.Binds
+			case *ast.Function:
+				for _, param := range typedCurr.Parameters {
+					items = append(items, createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, position))
+				}
 			default:
 				continue
 			}
