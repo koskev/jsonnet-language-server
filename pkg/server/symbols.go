@@ -27,7 +27,7 @@ func (s *Server) DocumentSymbol(_ context.Context, params *protocol.DocumentSymb
 		return nil, nil
 	}
 
-	processor := processing.NewProcessor(s.cache, nil)
+	processor := processing.NewProcessor(s.cache, nil, s.configuration.JPaths)
 	symbols := s.buildDocumentSymbols(processor, doc.AST)
 
 	result := make([]interface{}, len(symbols))

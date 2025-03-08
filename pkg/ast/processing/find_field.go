@@ -13,6 +13,10 @@ import (
 func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexList []string, partialMatchFields bool) ([]ObjectRange, error) {
 	var foundDesugaredObjects []*ast.DesugaredObject
 	// First element will be super, self, or var name
+	// TODO: would 1 be okay?
+	if len(indexList) < 2 {
+		return nil, fmt.Errorf("Index list is too small")
+	}
 	start, indexList := indexList[0], indexList[1:]
 	switch {
 	case start == "super":

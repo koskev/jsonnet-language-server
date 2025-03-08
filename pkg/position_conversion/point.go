@@ -11,3 +11,10 @@ func ProtocolToAST(point protocol.Position) ast.Location {
 		Column: int(point.Character) + 1,
 	}
 }
+
+func ASTToProtocol(location ast.Location) protocol.Position {
+	return protocol.Position{
+		Line:      uint32(location.Line) - 1,
+		Character: uint32(location.Column) - 1,
+	}
+}

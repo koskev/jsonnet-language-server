@@ -140,6 +140,7 @@ func (s *Server) Initialize(_ context.Context, _ *protocol.ParamInitialize) (*pr
 			DefinitionProvider:         true,
 			DocumentFormattingProvider: true,
 			DocumentSymbolProvider:     true,
+			ReferencesProvider:         true,
 			ExecuteCommandProvider:     protocol.ExecuteCommandOptions{Commands: []string{}},
 			TextDocumentSync: &protocol.TextDocumentSyncOptions{
 				Change:    protocol.Full,

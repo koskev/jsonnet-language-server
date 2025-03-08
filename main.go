@@ -91,6 +91,9 @@ func main() {
 	log.Infoln("Starting the language server")
 
 	ctx := context.Background()
+	//l, _ := net.Listen("tcp", "127.0.0.1:4874")
+	//c, _ := l.Accept()
+	//stream := jsonrpc2.NewHeaderStream(c)
 	stream := jsonrpc2.NewHeaderStream(utils.NewDefaultStdio())
 	conn := jsonrpc2.NewConn(stream)
 	client := protocol.ClientDispatcher(conn)
