@@ -17,7 +17,7 @@ import (
 )
 
 func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams) (protocol.Definition, error) {
-	responseDefLinks, err := s.referenceLink(params)
+	responseDefLinks, err := s.definitionLink(params)
 	if err != nil {
 		// Returning an error too often can lead to the client killing the language server
 		// Logging the errors is sufficient
@@ -38,7 +38,7 @@ func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams
 	return response, nil
 }
 
-func (s *Server) referenceLink(params *protocol.DefinitionParams) ([]protocol.DefinitionLink, error) {
+func (s *Server) definitionLink(params *protocol.DefinitionParams) ([]protocol.DefinitionLink, error) {
 	doc, err := s.cache.Get(params.TextDocument.URI)
 	if err != nil {
 		return nil, utils.LogErrorf("Definition: %s: %w", errorRetrievingDocument, err)
@@ -69,7 +69,6 @@ func (s *Server) findDefinition(root ast.Node, params *protocol.DefinitionParams
 	deepestNode := searchStack.Pop()
 	switch deepestNode := deepestNode.(type) {
 	case *ast.Var:
-		log.Errorf("Found Var node %s", deepestNode.Id)
 
 		var objectRange processing.ObjectRange
 
@@ -126,14 +125,5 @@ func (s *Server) findDefinition(root ast.Node, params *protocol.DefinitionParams
 			response[i].TargetURI = protocol.URIFromPath(targetFile)
 		}
 	}
-	//if params.Position.Line == 57 {
-	//	log.Errorf("Tried to make a go to definition at %v %v root %v from",
-	//		params.Position,
-	//		params.TextDocument.URI.SpanURI(),
-	//		root,
-	//	)
-	//	log.Errorf("Links: %v\n", response)
-	//}
-
 	return response, nil
 }

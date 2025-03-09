@@ -28,7 +28,6 @@ func buildCompleteFlatStack(node ast.Node) *nodestack.NodeStack {
 	for !newChildren.IsEmpty() {
 		curr := newChildren.Pop()
 		stack.Push(curr)
-		logrus.Errorf("New child! Num left %d. Stack size %d", len(newChildren.Stack), len(stack.Stack))
 		switch curr := curr.(type) {
 		case *ast.DesugaredObject:
 			for _, field := range curr.Fields {
@@ -140,11 +139,11 @@ func (s *Server) References(_ context.Context, params *protocol.ReferenceParams)
 
 func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targetFilename string, vm *jsonnet.VM) []protocol.Location {
 	tree := nodetree.BuildTree(nil, root)
-	logrus.Errorf("%s", tree)
+	logrus.Tracef("%s", tree)
 	var response []protocol.Location
 
 	for _, currentNode := range tree.GetAllChildren() {
-		logrus.Errorf("Eval node %v at %v\n", reflect.TypeOf(currentNode), currentNode.Loc())
+		logrus.Tracef("Eval node %v at %v\n", reflect.TypeOf(currentNode), currentNode.Loc())
 		patchedLoc := currentNode.Loc().Begin
 		if currentNode.Loc().End.IsSet() {
 			patchedLoc = currentNode.Loc().End
@@ -153,6 +152,7 @@ func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targ
 			// According to the comment Colum is 0 indexed and not 1 indexed like the line
 			patchedLoc.Column -= 1
 		}
+		logrus.Debugf("Trying to jump from %v in %v", patchedLoc, currentNode.Loc().FileName)
 		links, err := s.findDefinition(root, &protocol.DefinitionParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 
@@ -163,15 +163,15 @@ func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targ
 			},
 		}, vm)
 		if err != nil {
-			logrus.Errorf("Could not jump from %v with type %v: %w", patchedLoc.String(), reflect.TypeOf(currentNode), err)
+			logrus.Debugf("Could not jump from %v with type %v: %v", patchedLoc.String(), reflect.TypeOf(currentNode), err)
 		}
 		for _, link := range links {
 			linkEnd := position.ProtocolToAST(link.TargetRange.End)
 			linkStart := position.ProtocolToAST(link.TargetRange.Start)
-			logrus.Errorf("Jumping from \"%s\"[%v] with type %v leads to \"%s\"[%v:%v]", currentNode.Loc().FileName, patchedLoc.String(), reflect.TypeOf(currentNode), link.TargetURI.SpanURI().Filename(), linkStart, linkEnd)
+			logrus.Debugf("Jumping from \"%s\"[%v] with type %v leads to \"%s\"[%v:%v]", currentNode.Loc().FileName, patchedLoc.String(), reflect.TypeOf(currentNode), link.TargetURI.SpanURI().Filename(), linkStart, linkEnd)
 			if link.TargetURI.SpanURI().Filename() == targetFilename &&
 				pointInRange(*targetLocation, linkStart, linkEnd) {
-				logrus.Errorf("hit target of %v", targetLocation)
+				logrus.Debugf("hit target of %v", targetLocation)
 				response = append(response, protocol.Location{
 					URI: protocol.DocumentURI(fmt.Sprintf("file://%s", currentNode.Loc().FileName)),
 					//Range: position.RangeASTToProtocol(*currentNode.Loc()),

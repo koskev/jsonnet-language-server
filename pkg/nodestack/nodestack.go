@@ -4,7 +4,6 @@ import (
 	"sort"
 
 	"github.com/google/go-jsonnet/ast"
-	"github.com/sirupsen/logrus"
 )
 
 type NodeStack struct {
@@ -65,12 +64,10 @@ func (s *NodeStack) BuildIndexList() []string {
 			s.Push(curr.Index)
 			s.Push(curr.Target)
 		case *ast.LiteralString:
-			logrus.Errorf("Literal %v pos %v", curr.Value, curr.Loc())
 			indexList = append(indexList, curr.Value)
 		case *ast.Self:
 			indexList = append(indexList, "self")
 		case *ast.Var:
-			logrus.Errorf("var %v", curr.Id)
 			indexList = append(indexList, string(curr.Id))
 		case *ast.Import:
 			indexList = append(indexList, curr.File.Value)
