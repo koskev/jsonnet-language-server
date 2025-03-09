@@ -41,6 +41,14 @@ func New() *Cache {
 	}
 }
 
+func (c *Cache) Remove(uri protocol.DocumentURI) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.docs, uri)
+	c.topLevelObjects = make(map[string][]*ast.DesugaredObject)
+}
+
 // Put adds or replaces a document in the cache.
 func (c *Cache) Put(doc *Document) error {
 	c.mu.Lock()

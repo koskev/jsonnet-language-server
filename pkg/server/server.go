@@ -119,6 +119,11 @@ func (s *Server) DidOpen(_ context.Context, params *protocol.DidOpenTextDocument
 	return s.cache.Put(doc)
 }
 
+func (s *Server) DidClose(_ context.Context, params *protocol.DidCloseTextDocumentParams) error {
+	s.cache.Remove(params.TextDocument.URI)
+	return nil
+}
+
 func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
 	log.Infof("Initializing %s version %s", s.name, s.version)
 

@@ -37,7 +37,6 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 			NewText: params.NewName,
 		})
 		response.Changes[string(pos.URI)] = edits
-
 	}
 
 	return &response, nil

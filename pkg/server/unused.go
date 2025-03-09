@@ -212,10 +212,6 @@ func (s *Server) DidChangeWorkspaceFolders(context.Context, *protocol.DidChangeW
 	return notImplemented("DidChangeWorkspaceFolders")
 }
 
-func (s *Server) DidClose(context.Context, *protocol.DidCloseTextDocumentParams) error {
-	return notImplemented("DidClose")
-}
-
 func (s *Server) DidCreateFiles(context.Context, *protocol.CreateFilesParams) error {
 	return notImplemented("DidCreateFiles")
 }

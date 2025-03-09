@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"net/url"
 	"os"
@@ -49,6 +50,7 @@ func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (
 }
 
 func getAllFiles(dir string) []string {
+	// TODO: handle deleted and created files in cache
 	var files []string
 	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -68,12 +70,20 @@ func getAllFiles(dir string) []string {
 func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.LocationRange, error) {
 	var ranges []ast.LocationRange
 
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("opening file %s", file)
+	doc, err := s.cache.Get(protocol.URIFromPath(path))
+	var reader io.Reader
+	if err == nil {
+		reader = strings.NewReader(doc.Item.Text)
+	} else {
+		file, err := os.Open(path)
+		if err != nil {
+			return nil, fmt.Errorf("opening file %s", path)
+		}
+		reader = file
+		defer file.Close()
 	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+
+	scanner := bufio.NewScanner(reader)
 
 	i := 0
 	for scanner.Scan() {
@@ -141,9 +151,15 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 			continue
 		}
 		vm := s.getVM(fileName)
-		root, _, err := vm.ImportAST("", fileName)
+		doc, err := s.cache.Get(protocol.DocumentURI(fileName))
+		var root ast.Node
 		if err != nil {
-			return nil, "", err
+			root, _, err = vm.ImportAST("", fileName)
+			if err != nil {
+				return nil, "", err
+			}
+		} else {
+			root = doc.AST
 		}
 		response = append(response, s.findReference(root, &targetLocation, sourceURI.SpanURI().Filename(), vm, locations)...)
 	}
