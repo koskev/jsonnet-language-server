@@ -1,60 +1,23 @@
 package server
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"io/fs"
 	"net/url"
+	"os"
 	"path"
 	"path/filepath"
-	"reflect"
+	"strings"
 
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
-	"github.com/google/go-jsonnet/toolutils"
-	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
-	"github.com/grafana/jsonnet-language-server/pkg/nodetree"
+	"github.com/grafana/jsonnet-language-server/pkg/ast/processing"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/sirupsen/logrus"
 )
-
-// TODO: should be a tree
-func buildCompleteFlatStack(node ast.Node) *nodestack.NodeStack {
-
-	newChildren := nodestack.NewNodeStack(node)
-	stack := nodestack.NewNodeStack(node)
-
-	for !newChildren.IsEmpty() {
-		curr := newChildren.Pop()
-		stack.Push(curr)
-		switch curr := curr.(type) {
-		case *ast.DesugaredObject:
-			for _, field := range curr.Fields {
-				body := field.Body
-				// Functions do not have a LocRange, so we use the one from the field's body
-				if funcBody, isFunc := body.(*ast.Function); isFunc {
-					funcBody.LocRange = field.LocRange
-					newChildren.Push(funcBody)
-				} else {
-					newChildren.Push(field.Name)
-					newChildren.Push(body)
-				}
-			}
-			for _, local := range curr.Locals {
-				newChildren.Push(local.Body)
-			}
-			for _, assert := range curr.Asserts {
-				newChildren.Push(assert)
-			}
-		default:
-			for _, c := range toolutils.Children(curr) {
-				newChildren.Push(c)
-			}
-		}
-	}
-	return stack.ReorderDesugaredObjects()
-}
 
 func pointInRange(loc ast.Location, rangeBegin ast.Location, rangeEnd ast.Location) bool {
 	return (rangeBegin.Line < loc.Line &&
@@ -63,26 +26,27 @@ func pointInRange(loc ast.Location, rangeBegin ast.Location, rangeEnd ast.Locati
 		(loc.Line == rangeEnd.Line && rangeEnd.Column <= loc.Column)
 }
 
-func (s *Server) getSelectedNode(searchStack *nodestack.NodeStack, params *protocol.ReferenceParams) (*ast.Var, error) {
-	selectedNode := searchStack.Pop()
-	if selectedNode == nil {
-		return nil, fmt.Errorf("finding a selected var")
+func (s *Server) getSelectedIdentifier(params *protocol.ReferenceParams) (string, error) {
+	fileName := params.TextDocument.URI.SpanURI().Filename()
+	vm := s.getVM(params.TextDocument.URI.SpanURI().Filename())
+	root, _, err := vm.ImportAST("", fileName)
+	if err != nil {
+		logrus.Errorf("Getting ast %v", err)
+		return "", nil
 	}
-	switch selectedNode := selectedNode.(type) {
-	case *ast.Var:
-		return selectedNode, nil
-	case *ast.Local:
-		for _, bind := range selectedNode.Binds {
-			searchStack.Push(bind.Body)
+
+	searchStack, _ := processing.FindNodeByPosition(root, position.ProtocolToAST(params.Position))
+	for !searchStack.IsEmpty() {
+		currentNode := searchStack.Pop()
+		switch currentNode := currentNode.(type) {
+		case *ast.LiteralString:
+			return currentNode.Value, nil
+		case *ast.Var:
+			return string(currentNode.Id), nil
 		}
-		return s.getSelectedNode(searchStack, params)
-	default:
-		nodes := toolutils.Children(selectedNode)
-		for _, node := range nodes {
-			searchStack.Push(node)
-		}
-		return s.getSelectedNode(searchStack, params)
 	}
+
+	return "", fmt.Errorf("unable to find selected identifier")
 }
 
 func getAllFiles(dir string) []string {
@@ -100,6 +64,44 @@ func getAllFiles(dir string) []string {
 		return nil
 	})
 	return files
+}
+
+func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.LocationRange, error) {
+	var ranges []ast.LocationRange
+
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("opening file %s", file)
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+
+	i := 0
+	for scanner.Scan() {
+		i++
+		text := scanner.Text()
+		for {
+			location := strings.Index(text, identifier)
+			if location < 0 || location > len(text) {
+				break
+			}
+			text = text[location+len(identifier):]
+			// TODO: check off by one
+			ranges = append(ranges, ast.LocationRange{
+				FileName: path,
+				Begin: ast.Location{
+					Line:   i,
+					Column: location,
+				},
+				End: ast.Location{
+					Line:   i,
+					Column: location + len(identifier),
+				},
+			})
+		}
+	}
+
+	return ranges, nil
 }
 
 func (s *Server) References(_ context.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
@@ -123,57 +125,68 @@ func (s *Server) References(_ context.Context, params *protocol.ReferenceParams)
 		}
 	}
 
+	identifier, err := s.getSelectedIdentifier(params)
+	if err != nil {
+		return nil, err
+	}
+	logrus.Errorf("#### got identifier %s", identifier)
+
 	var response []protocol.Location
 	targetLocation := position.ProtocolToAST(params.Position)
 	for fileName, _ := range allFiles {
+		locations, err := s.findIdentifierLocations(fileName, identifier)
+		if err != nil {
+			continue
+		}
+		if len(locations) == 0 {
+			// No matches
+			continue
+		}
 		vm := s.getVM(fileName)
 		root, _, err := vm.ImportAST("", fileName)
 		if err != nil {
 			return nil, err
 		}
-		response = append(response, s.findReference(root, &targetLocation, params.TextDocument.URI.SpanURI().Filename(), vm)...)
+		response = append(response, s.findReference(root, &targetLocation, params.TextDocument.URI.SpanURI().Filename(), vm, locations)...)
 	}
 
 	return response, nil
 }
 
-func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targetFilename string, vm *jsonnet.VM) []protocol.Location {
-	tree := nodetree.BuildTree(nil, root)
-	logrus.Tracef("%s", tree)
+func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targetFilename string, vm *jsonnet.VM, testTargets []ast.LocationRange) []protocol.Location {
 	var response []protocol.Location
 
-	for _, currentNode := range tree.GetAllChildren() {
-		logrus.Tracef("Eval node %v at %v\n", reflect.TypeOf(currentNode), currentNode.Loc())
-		patchedLoc := currentNode.Loc().Begin
-		if currentNode.Loc().End.IsSet() {
-			patchedLoc = currentNode.Loc().End
+	for _, currentTarget := range testTargets {
+		patchedLoc := currentTarget.Begin
+		if currentTarget.End.IsSet() {
+			patchedLoc = currentTarget.End
 			// WHY?!
 			// It seems the whole code base has an off by one error for the columns.
 			// According to the comment Colum is 0 indexed and not 1 indexed like the line
 			patchedLoc.Column -= 1
 		}
-		logrus.Debugf("Trying to jump from %v in %v", patchedLoc, currentNode.Loc().FileName)
+		logrus.Debugf("Trying to jump from %v in %v", patchedLoc, currentTarget.FileName)
 		links, err := s.findDefinition(root, &protocol.DefinitionParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 
 				Position: position.ASTToProtocol(patchedLoc),
 				TextDocument: protocol.TextDocumentIdentifier{
-					URI: protocol.DocumentURI(fmt.Sprintf("file://%s", currentNode.Loc().FileName)),
+					URI: protocol.DocumentURI(fmt.Sprintf("file://%s", &currentTarget.FileName)),
 				},
 			},
 		}, vm)
 		if err != nil {
-			logrus.Debugf("Could not jump from %v with type %v: %v", patchedLoc.String(), reflect.TypeOf(currentNode), err)
+			logrus.Debugf("Could not jump from %v: %v", patchedLoc.String(), err)
 		}
 		for _, link := range links {
 			linkEnd := position.ProtocolToAST(link.TargetRange.End)
 			linkStart := position.ProtocolToAST(link.TargetRange.Start)
-			logrus.Debugf("Jumping from \"%s\"[%v] with type %v leads to \"%s\"[%v:%v]", currentNode.Loc().FileName, patchedLoc.String(), reflect.TypeOf(currentNode), link.TargetURI.SpanURI().Filename(), linkStart, linkEnd)
+			logrus.Debugf("Jumping from \"%s\"[%v] leads to \"%s\"[%v:%v]", currentTarget.FileName, patchedLoc.String(), link.TargetURI.SpanURI().Filename(), linkStart, linkEnd)
 			if link.TargetURI.SpanURI().Filename() == targetFilename &&
 				pointInRange(*targetLocation, linkStart, linkEnd) {
 				logrus.Debugf("hit target of %v", targetLocation)
 				response = append(response, protocol.Location{
-					URI: protocol.DocumentURI(fmt.Sprintf("file://%s", currentNode.Loc().FileName)),
+					URI: protocol.DocumentURI(fmt.Sprintf("file://%s", currentTarget.FileName)),
 					//Range: position.RangeASTToProtocol(*currentNode.Loc()),
 					Range: protocol.Range{
 						Start: position.ASTToProtocol(patchedLoc),
