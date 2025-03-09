@@ -2,6 +2,14 @@
 
 A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonnet](https://jsonnet.org).
 
+## Features of this fork
+
+ * Autocomplete function parameter names
+ * Autocomplete function parameter with their default values
+ * Find references
+    * Still missing a few like function parameters
+ * Rename
+
 ## Features
 
 ### Jump to definition
