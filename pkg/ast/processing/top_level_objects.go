@@ -18,9 +18,18 @@ func (p *Processor) FindTopLevelObjectsInFile(filename, importedFrom string) []*
 
 // Find all ast.DesugaredObject's from NodeStack
 func (p *Processor) FindTopLevelObjects(stack *nodestack.NodeStack) []*ast.DesugaredObject {
+	visitedLocations := map[*ast.LocationRange]bool{}
 	var objects []*ast.DesugaredObject
 	for !stack.IsEmpty() {
 		curr := stack.Pop()
+		if curr == nil {
+			continue
+		}
+		if _, ok := visitedLocations[curr.Loc()]; ok {
+			log.Debugf("Detected loop....")
+			continue
+		}
+		visitedLocations[curr.Loc()] = true
 		switch curr := curr.(type) {
 		case *ast.DesugaredObject:
 			objects = append(objects, curr)
@@ -75,6 +84,7 @@ func (p *Processor) FindTopLevelObjects(stack *nodestack.NodeStack) []*ast.Desug
 			}
 			stack.Push(varReference)
 		case *ast.Function:
+			// XXX: This might cause cycles
 			stack.Push(curr.Body)
 		}
 	}
