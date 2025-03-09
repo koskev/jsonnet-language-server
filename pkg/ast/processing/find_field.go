@@ -53,9 +53,20 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 		if bind == nil {
 			param := FindParameterByIDViaStack(stack, ast.Identifier(start), partialMatchFields)
 			if param != nil {
-				tempStack := nodestack.NewNodeStack(param.DefaultArg)
-				indexList = append(tempStack.BuildIndexList(), indexList...)
-				return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
+				if param.DefaultArg != nil {
+					tempStack := nodestack.NewNodeStack(param.DefaultArg)
+					indexList = append(tempStack.BuildIndexList(), indexList...)
+					return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
+				} else {
+					return []ObjectRange{
+						{
+							Filename:       param.LocRange.FileName,
+							SelectionRange: param.LocRange,
+							FullRange:      param.LocRange,
+						},
+					}, nil
+
+				}
 			}
 			return nil, fmt.Errorf("could not find bind for %s", start)
 		}
