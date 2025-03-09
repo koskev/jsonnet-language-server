@@ -44,7 +44,14 @@ func (t *NodeTree) GetAllChildren() []ast.Node {
 func (t *NodeTree) String() string {
 	var output strings.Builder
 
-	output.WriteString(fmt.Sprintf("%v at %v\n", reflect.TypeOf(t.Node), t.Node.Loc()))
+	output.WriteString(fmt.Sprintf("%v at %v", reflect.TypeOf(t.Node), t.Node.Loc()))
+	switch node := t.Node.(type) {
+	case *ast.LiteralString:
+		output.WriteString(fmt.Sprintf(" %s", node.Value))
+	case *ast.Var:
+		output.WriteString(fmt.Sprintf(" %s", node.Id))
+	}
+	output.WriteString("\n")
 	for _, child := range t.Children {
 		childString := child.String()
 		for _, line := range strings.Split(childString, "\n") {
