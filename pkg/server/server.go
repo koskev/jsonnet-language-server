@@ -154,6 +154,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 					IncludeText: false,
 				},
 			},
+			RenameProvider: true,
 		},
 		ServerInfo: struct {
 			Name    string `json:"name"`

@@ -104,10 +104,6 @@ func (s *Server) RangeFormatting(context.Context, *protocol.DocumentRangeFormatt
 	return nil, notImplemented("RangeFormatting")
 }
 
-func (s *Server) Rename(context.Context, *protocol.RenameParams) (*protocol.WorkspaceEdit, error) {
-	return nil, notImplemented("Rename")
-}
-
 func (s *Server) Resolve(context.Context, *protocol.CompletionItem) (*protocol.CompletionItem, error) {
 	return nil, notImplemented("Resolve")
 }

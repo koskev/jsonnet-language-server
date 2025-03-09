@@ -90,11 +90,11 @@ func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.
 				FileName: path,
 				Begin: ast.Location{
 					Line:   i,
-					Column: location,
+					Column: location + 1,
 				},
 				End: ast.Location{
 					Line:   i,
-					Column: location + len(identifier),
+					Column: location + len(identifier) + 1,
 				},
 			})
 		}
@@ -104,14 +104,15 @@ func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.
 }
 
 func (s *Server) References(_ context.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
-	return s.findAllReferences(params.TextDocument.URI, params.Position)
+	response, _, err := s.findAllReferences(params.TextDocument.URI, params.Position)
+	return response, err
 }
 
-func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.Position) ([]protocol.Location, error) {
+func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.Position) ([]protocol.Location, string, error) {
 	folders := s.configuration.JPaths
 	u, err := url.Parse(string(sourceURI))
 	if err != nil {
-		return nil, fmt.Errorf("invalid params uri %s", sourceURI)
+		return nil, "", fmt.Errorf("invalid params uri %s", sourceURI)
 	}
 	folders = append(folders, path.Dir(u.Path))
 	allFiles := map[string]struct{}{}
@@ -125,7 +126,7 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 
 	identifier, err := s.getSelectedIdentifier(sourceURI.SpanURI().Filename(), pos)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	var response []protocol.Location
@@ -142,11 +143,11 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 		vm := s.getVM(fileName)
 		root, _, err := vm.ImportAST("", fileName)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		response = append(response, s.findReference(root, &targetLocation, sourceURI.SpanURI().Filename(), vm, locations)...)
 	}
-	return response, nil
+	return response, identifier, nil
 
 }
 
