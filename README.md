@@ -10,6 +10,13 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
     * Still missing a few like function parameters
  * Rename
 
+### TODO
+ * Fix original bug with changed identifiers
+   * Go to definition does neither work with data in the cache nor after saving without a restart of the ls
+ * Proper rename implementation with version etc.
+ * Code actions?
+ * Flow typing?
+
 ## Features
 
 ### Jump to definition
