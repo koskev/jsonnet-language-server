@@ -63,7 +63,7 @@ func (s *Server) referenceLink(params *protocol.DefinitionParams) ([]protocol.De
 
 func (s *Server) findDefinition(root ast.Node, params *protocol.DefinitionParams, vm *jsonnet.VM) ([]protocol.DefinitionLink, error) {
 	var response []protocol.DefinitionLink
-	processor := processing.NewProcessor(s.cache, vm, s.configuration.JPaths)
+	processor := processing.NewProcessor(s.cache, vm)
 
 	searchStack, _ := processing.FindNodeByPosition(root, position.ProtocolToAST(params.Position))
 	deepestNode := searchStack.Pop()

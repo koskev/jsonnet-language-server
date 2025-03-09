@@ -8,13 +8,11 @@ import (
 type Processor struct {
 	cache *cache.Cache
 	vm    *jsonnet.VM
-	paths []string
 }
 
-func NewProcessor(cache *cache.Cache, vm *jsonnet.VM, paths []string) *Processor {
+func NewProcessor(cache *cache.Cache, vm *jsonnet.VM) *Processor {
 	return &Processor{
 		cache: cache,
 		vm:    vm,
-		paths: paths,
 	}
 }

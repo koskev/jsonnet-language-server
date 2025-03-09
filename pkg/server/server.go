@@ -119,10 +119,15 @@ func (s *Server) DidOpen(_ context.Context, params *protocol.DidOpenTextDocument
 	return s.cache.Put(doc)
 }
 
-func (s *Server) Initialize(_ context.Context, _ *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
+func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
 	log.Infof("Initializing %s version %s", s.name, s.version)
 
 	s.diagnosticsLoop()
+	log.Errorf("###### %v", params.InitializeParams.WorkspaceFolders)
+	// TODO: this is probably not a JPath
+	for _, folder := range params.WorkspaceFolders {
+		s.configuration.JPaths = append(s.configuration.JPaths, folder.Name)
+	}
 
 	var err error
 

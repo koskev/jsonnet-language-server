@@ -46,7 +46,10 @@ func (t *NodeTree) String() string {
 
 	output.WriteString(fmt.Sprintf("%v at %v\n", reflect.TypeOf(t.Node), t.Node.Loc()))
 	for _, child := range t.Children {
-		output.WriteString(fmt.Sprintf("\t%s\n", child))
+		childString := child.String()
+		for _, line := range strings.Split(childString, "\n") {
+			output.WriteString(fmt.Sprintf("\t%s\n", line))
+		}
 	}
 	return output.String()
 }
