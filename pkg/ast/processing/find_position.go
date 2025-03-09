@@ -45,8 +45,12 @@ func FindNodeByPosition(node ast.Node, location ast.Location) (*nodestack.NodeSt
 					funcBody.LocRange = field.LocRange
 					stack.Push(funcBody)
 				} else {
-					stack.Push(field.Name)
 					stack.Push(body)
+				}
+
+				if nameNode, isLiteral := field.Name.(*ast.LiteralString); isLiteral {
+					nameNode.LocRange = field.LocRange
+					stack.Push(nameNode)
 				}
 			}
 			for _, local := range curr.Locals {
