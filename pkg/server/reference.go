@@ -26,16 +26,15 @@ func pointInRange(loc ast.Location, rangeBegin ast.Location, rangeEnd ast.Locati
 		(loc.Line == rangeEnd.Line && rangeEnd.Column <= loc.Column)
 }
 
-func (s *Server) getSelectedIdentifier(params *protocol.ReferenceParams) (string, error) {
-	fileName := params.TextDocument.URI.SpanURI().Filename()
-	vm := s.getVM(params.TextDocument.URI.SpanURI().Filename())
-	root, _, err := vm.ImportAST("", fileName)
+func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (string, error) {
+	vm := s.getVM(filename)
+	root, _, err := vm.ImportAST("", filename)
 	if err != nil {
 		logrus.Errorf("Getting ast %v", err)
 		return "", nil
 	}
 
-	searchStack, _ := processing.FindNodeByPosition(root, position.ProtocolToAST(params.Position))
+	searchStack, _ := processing.FindNodeByPosition(root, position.ProtocolToAST(pos))
 	for !searchStack.IsEmpty() {
 		currentNode := searchStack.Pop()
 		switch currentNode := currentNode.(type) {
@@ -105,15 +104,14 @@ func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.
 }
 
 func (s *Server) References(_ context.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
-	// Load AST for all files in JPaths
-	// Get current node from params location
-	// search all asts for the current reference
-	// profit?!
+	return s.findAllReferences(params.TextDocument.URI, params.Position)
+}
 
+func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.Position) ([]protocol.Location, error) {
 	folders := s.configuration.JPaths
-	u, err := url.Parse(string(params.TextDocument.URI.SpanURI()))
+	u, err := url.Parse(string(sourceURI))
 	if err != nil {
-		return nil, fmt.Errorf("invalid params uri %s", params.TextDocument.URI.SpanURI())
+		return nil, fmt.Errorf("invalid params uri %s", sourceURI)
 	}
 	folders = append(folders, path.Dir(u.Path))
 	allFiles := map[string]struct{}{}
@@ -125,14 +123,13 @@ func (s *Server) References(_ context.Context, params *protocol.ReferenceParams)
 		}
 	}
 
-	identifier, err := s.getSelectedIdentifier(params)
+	identifier, err := s.getSelectedIdentifier(sourceURI.SpanURI().Filename(), pos)
 	if err != nil {
 		return nil, err
 	}
-	logrus.Errorf("#### got identifier %s", identifier)
 
 	var response []protocol.Location
-	targetLocation := position.ProtocolToAST(params.Position)
+	targetLocation := position.ProtocolToAST(pos)
 	for fileName, _ := range allFiles {
 		locations, err := s.findIdentifierLocations(fileName, identifier)
 		if err != nil {
@@ -147,57 +144,44 @@ func (s *Server) References(_ context.Context, params *protocol.ReferenceParams)
 		if err != nil {
 			return nil, err
 		}
-		response = append(response, s.findReference(root, &targetLocation, params.TextDocument.URI.SpanURI().Filename(), vm, locations)...)
+		response = append(response, s.findReference(root, &targetLocation, sourceURI.SpanURI().Filename(), vm, locations)...)
 	}
-
 	return response, nil
+
 }
 
 func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targetFilename string, vm *jsonnet.VM, testTargets []ast.LocationRange) []protocol.Location {
 	var response []protocol.Location
 
 	for _, currentTarget := range testTargets {
-		patchedLoc := currentTarget.Begin
-		if currentTarget.End.IsSet() {
-			patchedLoc = currentTarget.End
-			// WHY?!
-			// It seems the whole code base has an off by one error for the columns.
-			// According to the comment Colum is 0 indexed and not 1 indexed like the line
-			patchedLoc.Column -= 1
-		}
-		logrus.Debugf("Trying to jump from %v in %v", patchedLoc, currentTarget.FileName)
+		loc := currentTarget.Begin
+		logrus.Debugf("Trying to jump from %v in %v", loc, currentTarget.FileName)
 		links, err := s.findDefinition(root, &protocol.DefinitionParams{
 			TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 
-				Position: position.ASTToProtocol(patchedLoc),
+				Position: position.ASTToProtocol(loc),
 				TextDocument: protocol.TextDocumentIdentifier{
 					URI: protocol.DocumentURI(fmt.Sprintf("file://%s", &currentTarget.FileName)),
 				},
 			},
 		}, vm)
 		if err != nil {
-			logrus.Debugf("Could not jump from %v: %v", patchedLoc.String(), err)
+			logrus.Debugf("Could not jump from %v: %v", loc.String(), err)
 		}
 		for _, link := range links {
 			linkEnd := position.ProtocolToAST(link.TargetRange.End)
 			linkStart := position.ProtocolToAST(link.TargetRange.Start)
-			logrus.Debugf("Jumping from \"%s\"[%v] leads to \"%s\"[%v:%v]", currentTarget.FileName, patchedLoc.String(), link.TargetURI.SpanURI().Filename(), linkStart, linkEnd)
+			logrus.Debugf("Jumping from \"%s\"[%v] leads to \"%s\"[%v:%v]", currentTarget.FileName, loc.String(), link.TargetURI.SpanURI().Filename(), linkStart, linkEnd)
 			if link.TargetURI.SpanURI().Filename() == targetFilename &&
 				pointInRange(*targetLocation, linkStart, linkEnd) {
 				logrus.Debugf("hit target of %v", targetLocation)
 				response = append(response, protocol.Location{
-					URI: protocol.DocumentURI(fmt.Sprintf("file://%s", currentTarget.FileName)),
-					//Range: position.RangeASTToProtocol(*currentNode.Loc()),
-					Range: protocol.Range{
-						Start: position.ASTToProtocol(patchedLoc),
-					},
+					URI:   protocol.DocumentURI(fmt.Sprintf("file://%s", currentTarget.FileName)),
+					Range: position.RangeASTToProtocol(currentTarget),
 				})
 			}
 
 		}
 	}
-
-	// for all nodes check if var
-	// call findReference and check if same
 	return response
 }
