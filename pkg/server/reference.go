@@ -121,15 +121,15 @@ func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.
 }
 
 func (s *Server) References(_ context.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
-	response, _, err := s.findAllReferences(params.TextDocument.URI, params.Position)
+	response, err := s.findAllReferences(params.TextDocument.URI, params.Position, params.Context.IncludeDeclaration)
 	return response, err
 }
 
-func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.Position) ([]protocol.Location, string, error) {
+func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.Position, includeSelf bool) ([]protocol.Location, error) {
 	folders := s.configuration.JPaths
 	u, err := url.Parse(string(sourceURI))
 	if err != nil {
-		return nil, "", fmt.Errorf("invalid params uri %s", sourceURI)
+		return nil, fmt.Errorf("invalid params uri %s", sourceURI)
 	}
 	folders = append(folders, path.Dir(u.Path))
 	allFiles := map[string]struct{}{}
@@ -143,10 +143,26 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 
 	identifier, err := s.getSelectedIdentifier(sourceURI.SpanURI().Filename(), pos)
 	if err != nil {
-		return nil, "", err
+		return nil, err
+	}
+	var response []protocol.Location
+
+	if includeSelf {
+		sourcePos, err := s.findIdentifierLocations(sourceURI.SpanURI().Filename(), identifier)
+		if err != nil {
+			return nil, fmt.Errorf("getting source range")
+		}
+		for _, searchPos := range sourcePos {
+			if pointInRange(position.ProtocolToAST(pos), searchPos.Begin, searchPos.End) {
+				r := protocol.Location{
+					Range: position.RangeASTToProtocol(searchPos),
+					URI:   sourceURI,
+				}
+				response = append(response, r)
+			}
+		}
 	}
 
-	var response []protocol.Location
 	targetLocation := position.ProtocolToAST(pos)
 	for fileName, _ := range allFiles {
 		locations, err := s.findIdentifierLocations(fileName, identifier)
@@ -163,14 +179,14 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 		if err != nil {
 			root, _, err = vm.ImportAST("", fileName)
 			if err != nil {
-				return nil, "", err
+				return nil, err
 			}
 		} else {
 			root = doc.AST
 		}
 		response = append(response, s.findReference(root, &targetLocation, sourceURI.SpanURI().Filename(), vm, locations)...)
 	}
-	return response, identifier, nil
+	return response, nil
 
 }
 
