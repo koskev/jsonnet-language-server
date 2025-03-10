@@ -43,6 +43,13 @@ func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (
 			return currentNode.Value, nil
 		case *ast.Var:
 			return string(currentNode.Id), nil
+		case *ast.Local:
+			for _, bind := range currentNode.Binds {
+				// TODO: why can there be multiple binds?
+				if len(bind.Variable) > 0 {
+					return string(bind.Variable), nil
+				}
+			}
 		}
 	}
 
