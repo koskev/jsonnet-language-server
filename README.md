@@ -8,12 +8,15 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
  * Autocomplete function parameter with their default values
  * Find references
     * Still missing a few like function parameters
- * Rename
+ * Rename (only at declaration)
+ * Bugfixes
+  * Infinite loops
 
 ### TODO
  * Fix original bug with changed identifiers
    * Go to definition does neither work with data in the cache nor after saving without a restart of the ls
- * Proper rename implementation with version etc.
+ * Proper caching implementation
+ * General cleanup after understanding more lsp stuff
  * Code actions?
  * Flow typing?
 

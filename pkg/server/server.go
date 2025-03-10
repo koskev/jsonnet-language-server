@@ -45,7 +45,8 @@ type Server struct {
 	cache  *cache.Cache
 	client protocol.ClientCloser
 
-	configuration Configuration
+	configuration      Configuration
+	clientCapabilities protocol.ClientCapabilities
 
 	// Diagnostics
 	diagMutex   sync.RWMutex
@@ -133,6 +134,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 	for _, folder := range params.WorkspaceFolders {
 		s.configuration.JPaths = append(s.configuration.JPaths, folder.Name)
 	}
+	s.clientCapabilities = params.Capabilities
 
 	var err error
 
