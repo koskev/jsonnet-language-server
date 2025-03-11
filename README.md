@@ -13,8 +13,10 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
   * Infinite loops
 
 ### TODO
- * Fix original bug with changed identifiers
-   * Go to definition does neither work with data in the cache nor after saving without a restart of the ls
+ * Original Bugs
+  * Broken go to for dollar inside locals
+  * Go to definition does neither work with data in the cache nor after saving without a restart of the ls
+ * Fix tests
  * Proper caching implementation
  * General cleanup after understanding more lsp stuff
  * Code actions?

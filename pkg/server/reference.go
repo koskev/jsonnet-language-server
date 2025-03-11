@@ -35,7 +35,7 @@ func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (
 		return "", nil
 	}
 
-	searchStack, _ := processing.FindNodeByPosition(root, position.ProtocolToAST(pos))
+	searchStack, _ := processing.FindNodeByPositionForReference(root, position.ProtocolToAST(pos))
 	for !searchStack.IsEmpty() {
 		currentNode := searchStack.Pop()
 		logrus.Tracef("Looking at %v", reflect.TypeOf(currentNode))
