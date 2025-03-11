@@ -21,11 +21,14 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// TODO: fix this lazy comparison. Too tired right now and this works :)
 func pointInRange(loc ast.Location, rangeBegin ast.Location, rangeEnd ast.Location) bool {
 	return (rangeBegin.Line < loc.Line &&
 		rangeEnd.Line > loc.Line) ||
-		(loc.Line == rangeBegin.Line && rangeBegin.Column <= loc.Column) ||
-		(loc.Line == rangeEnd.Line && rangeEnd.Column <= loc.Column)
+		// Single line
+		(loc.Line == rangeBegin.Line && loc.Line == rangeEnd.Line && rangeBegin.Column <= loc.Column && rangeEnd.Column >= loc.Column) ||
+		(loc.Line == rangeBegin.Line && rangeEnd.Line > loc.Line && rangeBegin.Column <= loc.Column) ||
+		(loc.Line == rangeEnd.Line && rangeBegin.Line < loc.Line && rangeEnd.Column >= loc.Column)
 }
 
 func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (string, error) {

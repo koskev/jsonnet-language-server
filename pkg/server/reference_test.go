@@ -2,9 +2,11 @@ package server
 
 import (
 	_ "embed"
+	"fmt"
 	"path/filepath"
 	"testing"
 
+	"github.com/google/go-jsonnet/ast"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -94,7 +96,7 @@ var referenceTestCases = []referenceTestCase{
 		},
 	},
 	{
-		name:     "single letter function ref",
+		name:     "single letter member ref",
 		filename: libFile,
 		position: protocol.Position{
 			Line:      6,
@@ -210,4 +212,46 @@ func TestReference(t *testing.T) {
 			assert.Equal(t, expected, response)
 		})
 	}
+}
+
+func checkPoints(t *testing.T, points map[ast.Location]bool, begin ast.Location, end ast.Location) {
+
+	for loc, res := range points {
+		not := ""
+		if !res {
+			not = "not"
+		}
+		assert.Equal(t, res, pointInRange(loc, begin, end), fmt.Sprintf("%v should %s be in [%v|%v]", loc, not, begin, end))
+	}
+}
+
+func TestInRangeSingleLine(t *testing.T) {
+	begin := ast.Location{Line: 8, Column: 10}
+	end := ast.Location{Line: 8, Column: 20}
+
+	points := map[ast.Location]bool{
+		ast.Location{Line: 8, Column: 11}: true,
+		ast.Location{Line: 8, Column: 10}: true,
+		ast.Location{Line: 8, Column: 9}:  false,
+		ast.Location{Line: 8, Column: 20}: true,
+		ast.Location{Line: 8, Column: 21}: false,
+		ast.Location{Line: 7, Column: 15}: false,
+	}
+	checkPoints(t, points, begin, end)
+}
+
+func TestInRangeMultiLine(t *testing.T) {
+	begin := ast.Location{Line: 5, Column: 10}
+	end := ast.Location{Line: 10, Column: 20}
+
+	points := map[ast.Location]bool{
+		ast.Location{Line: 8, Column: 11}:  true,
+		ast.Location{Line: 8, Column: 0}:   true,
+		ast.Location{Line: 8, Column: 30}:  true,
+		ast.Location{Line: 5, Column: 9}:   false,
+		ast.Location{Line: 5, Column: 10}:  true,
+		ast.Location{Line: 10, Column: 20}: true,
+		ast.Location{Line: 10, Column: 21}: false,
+	}
+	checkPoints(t, points, begin, end)
 }
