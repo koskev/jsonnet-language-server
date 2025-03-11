@@ -5,4 +5,9 @@ local test2 = 5;
     a(): test2,
   },
   x: 'hi',
+  multiArgs(argOne, argTwo='two', argThree):: [
+    argOne,
+    argTwo,
+    argThree,
+  ],
 }
