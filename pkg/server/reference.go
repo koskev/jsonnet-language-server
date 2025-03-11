@@ -140,12 +140,12 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 		return nil, fmt.Errorf("invalid params uri %s", sourceURI)
 	}
 	folders = append(folders, path.Dir(u.Path))
-	allFiles := map[string]struct{}{}
+	allFiles := map[protocol.DocumentURI]struct{}{}
 
 	for _, folder := range folders {
 		files := getAllFiles(folder)
 		for _, file := range files {
-			allFiles[file] = struct{}{}
+			allFiles[protocol.URIFromPath(file)] = struct{}{}
 		}
 	}
 
@@ -172,7 +172,8 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 	}
 
 	targetLocation := position.ProtocolToAST(pos)
-	for fileName, _ := range allFiles {
+	for uri, _ := range allFiles {
+		fileName := uri.SpanURI().Filename()
 		locations, err := s.findIdentifierLocations(fileName, identifier)
 		if err != nil {
 			continue
@@ -209,7 +210,7 @@ func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targ
 
 				Position: position.ASTToProtocol(loc),
 				TextDocument: protocol.TextDocumentIdentifier{
-					URI: protocol.DocumentURI(fmt.Sprintf("file://%s", &currentTarget.FileName)),
+					URI: protocol.DocumentURI(fmt.Sprintf("file://%v", &currentTarget.FileName)),
 				},
 			},
 		}, vm)
