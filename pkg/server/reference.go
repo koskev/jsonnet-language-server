@@ -153,6 +153,9 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 	if err != nil {
 		return nil, err
 	}
+	if len(identifier) == 0 {
+		return nil, fmt.Errorf("Got empty identifier at document %s in position %v", sourceURI, pos)
+	}
 	var response []protocol.Location
 
 	if includeSelf {
