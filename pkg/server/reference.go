@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"reflect"
 	"strings"
 
 	"github.com/google/go-jsonnet"
@@ -31,13 +32,13 @@ func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (
 	vm := s.getVM(filename)
 	root, _, err := vm.ImportAST("", filename)
 	if err != nil {
-		logrus.Errorf("Getting ast %v", err)
 		return "", nil
 	}
 
 	searchStack, _ := processing.FindNodeByPosition(root, position.ProtocolToAST(pos))
 	for !searchStack.IsEmpty() {
 		currentNode := searchStack.Pop()
+		logrus.Tracef("Looking at %v", reflect.TypeOf(currentNode))
 		switch currentNode := currentNode.(type) {
 		case *ast.LiteralString:
 			return currentNode.Value, nil
@@ -48,6 +49,13 @@ func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (
 				// TODO: why can there be multiple binds?
 				if len(bind.Variable) > 0 {
 					return string(bind.Variable), nil
+				}
+			}
+		case *ast.Function:
+			// Parameters
+			for _, parameter := range currentNode.Parameters {
+				if pointInRange(position.ProtocolToAST(pos), parameter.LocRange.Begin, parameter.LocRange.End) {
+					return string(parameter.Name), nil
 				}
 			}
 		}
