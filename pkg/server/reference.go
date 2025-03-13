@@ -21,16 +21,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-// TODO: fix this lazy comparison. Too tired right now and this works :)
-func pointInRange(loc ast.Location, rangeBegin ast.Location, rangeEnd ast.Location) bool {
-	return (rangeBegin.Line < loc.Line &&
-		rangeEnd.Line > loc.Line) ||
-		// Single line
-		(loc.Line == rangeBegin.Line && loc.Line == rangeEnd.Line && rangeBegin.Column <= loc.Column && rangeEnd.Column >= loc.Column) ||
-		(loc.Line == rangeBegin.Line && rangeEnd.Line > loc.Line && rangeBegin.Column <= loc.Column) ||
-		(loc.Line == rangeEnd.Line && rangeBegin.Line < loc.Line && rangeEnd.Column >= loc.Column)
-}
-
 func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (string, error) {
 	vm := s.getVM(filename)
 	root, _, err := vm.ImportAST("", filename)
@@ -57,7 +47,7 @@ func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (
 		case *ast.Function:
 			// Parameters
 			for _, parameter := range currentNode.Parameters {
-				if pointInRange(position.ProtocolToAST(pos), parameter.LocRange.Begin, parameter.LocRange.End) {
+				if processing.InRange(position.ProtocolToAST(pos), parameter.LocRange) {
 					return string(parameter.Name), nil
 				}
 			}
@@ -157,7 +147,7 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 		return nil, err
 	}
 	if len(identifier) == 0 {
-		return nil, fmt.Errorf("Got empty identifier at document %s in position %v", sourceURI, pos)
+		return nil, fmt.Errorf("got empty identifier at document %s in position %v", sourceURI, pos)
 	}
 	var response []protocol.Location
 
@@ -167,7 +157,7 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 			return nil, fmt.Errorf("getting source range")
 		}
 		for _, searchPos := range sourcePos {
-			if pointInRange(position.ProtocolToAST(pos), searchPos.Begin, searchPos.End) {
+			if processing.InRange(position.ProtocolToAST(pos), searchPos) {
 				r := protocol.Location{
 					Range: position.RangeASTToProtocol(searchPos),
 					URI:   sourceURI,
@@ -178,7 +168,7 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 	}
 
 	targetLocation := position.ProtocolToAST(pos)
-	for uri, _ := range allFiles {
+	for uri := range allFiles {
 		fileName := uri.SpanURI().Filename()
 		locations, err := s.findIdentifierLocations(fileName, identifier)
 		if err != nil {
@@ -202,7 +192,6 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 		response = append(response, s.findReference(root, &targetLocation, sourceURI.SpanURI().Filename(), vm, locations)...)
 	}
 	return response, nil
-
 }
 
 func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targetFilename string, vm *jsonnet.VM, testTargets []ast.LocationRange) []protocol.Location {
@@ -228,14 +217,13 @@ func (s *Server) findReference(root ast.Node, targetLocation *ast.Location, targ
 			linkStart := position.ProtocolToAST(link.TargetRange.Start)
 			logrus.Debugf("Jumping from \"%s\"[%v] leads to \"%s\"[%v:%v]", currentTarget.FileName, loc.String(), link.TargetURI.SpanURI().Filename(), linkStart, linkEnd)
 			if link.TargetURI.SpanURI().Filename() == targetFilename &&
-				pointInRange(*targetLocation, linkStart, linkEnd) {
+				processing.InRange(*targetLocation, ast.LocationRange{Begin: linkStart, End: linkEnd}) {
 				logrus.Debugf("hit target of %v", targetLocation)
 				response = append(response, protocol.Location{
 					URI:   protocol.DocumentURI(fmt.Sprintf("file://%s", currentTarget.FileName)),
 					Range: position.RangeASTToProtocol(currentTarget),
 				})
 			}
-
 		}
 	}
 	return response

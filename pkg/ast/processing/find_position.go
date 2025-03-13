@@ -45,8 +45,6 @@ func FindNodeByPositionForReference(node ast.Node, location ast.Location) (*node
 				switch body := body.(type) {
 				case *ast.Function:
 					body.LocRange = field.LocRange
-				case *ast.LiteralString:
-					body.LocRange = field.LocRange
 				}
 				stack.Push(body)
 

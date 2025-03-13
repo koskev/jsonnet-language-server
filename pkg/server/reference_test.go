@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-jsonnet/ast"
+	"github.com/grafana/jsonnet-language-server/pkg/ast/processing"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -221,7 +222,7 @@ func checkPoints(t *testing.T, points map[ast.Location]bool, begin ast.Location,
 		if !res {
 			not = "not"
 		}
-		assert.Equal(t, res, pointInRange(loc, begin, end), fmt.Sprintf("%v should %s be in [%v|%v]", loc, not, begin, end))
+		assert.Equal(t, res, processing.InRange(loc, ast.LocationRange{Begin: begin, End: end}), fmt.Sprintf("%v should %s be in [%v|%v]", loc, not, begin, end))
 	}
 }
 
