@@ -4,10 +4,22 @@ local test2 = 5;
     coolFunc(val='hi'): val,
     a(): test2,
   },
-  x: 'hi',
+  x: 'ih',
   multiArgs(argOne, argTwo='two', argThree):: [
     argOne,
     argTwo,
     argThree,
   ],
+  nestedOne:: {
+    test1: 'nestedTest',
+    nestedTwo:: {
+      test2: 'nestedTest',
+      nestedThree:: {
+        test3: 'nestedTest',
+        nestedFour:: {
+          test4: 'nestedTest',
+        },
+      },
+    },
+  },
 }

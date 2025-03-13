@@ -8,4 +8,5 @@ local l = import 'lib.libsonnet';
   .
     a(),
   l.x,
+  l.nestedOne.nestedTwo.nestedThree.nestedFour.test4,
 ]

@@ -166,6 +166,20 @@ var referenceTestCases = []referenceTestCase{
 		},
 		},
 	},
+	{
+		name:     "deep nested",
+		filename: libFile,
+		position: protocol.Position{
+			Line:      19,
+			Character: 10,
+		},
+		identifier: "test4",
+		results: []referenceResult{{
+			targetFilename: mainFile,
+			targetBegin:    protocol.Position{Line: 10, Character: 47},
+		},
+		},
+	},
 }
 
 func TestReference(t *testing.T) {
@@ -255,4 +269,29 @@ func TestInRangeMultiLine(t *testing.T) {
 		ast.Location{Line: 10, Column: 21}: false,
 	}
 	checkPoints(t, points, begin, end)
+}
+
+func TestIdentifierVal(t *testing.T) {
+	filename := "./testdata/reference/lib.libsonnet"
+	server := NewServer("any", "test version", nil, Configuration{
+		JPaths: []string{"testdata", filepath.Join(filepath.Dir(filename), "vendor")},
+	})
+
+	locations, err := server.findIdentifierLocations(filename, "val")
+	require.NoError(t, err)
+
+	expected := []ast.LocationRange{
+		{
+			FileName: filename,
+			Begin:    ast.Location{4, 14},
+			End:      ast.Location{4, 17},
+		},
+		{
+			FileName: filename,
+			Begin:    ast.Location{4, 25},
+			End:      ast.Location{4, 28},
+		},
+	}
+
+	assert.Equal(t, expected, locations)
 }

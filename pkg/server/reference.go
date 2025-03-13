@@ -97,6 +97,7 @@ func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.
 	for scanner.Scan() {
 		i++
 		text := scanner.Text()
+		currentLocation := 0
 		for {
 			location := strings.Index(text, identifier)
 			if location < 0 || location > len(text) {
@@ -108,13 +109,15 @@ func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.
 				FileName: path,
 				Begin: ast.Location{
 					Line:   i,
-					Column: location + 1,
+					Column: currentLocation + location + 1,
 				},
 				End: ast.Location{
-					Line:   i,
-					Column: location + len(identifier) + 1,
+					Line: i,
+					// TODO: Is the +1 correct? because we are already at the first character
+					Column: currentLocation + location + len(identifier) + 1,
 				},
 			})
+			currentLocation += location + len(identifier)
 		}
 	}
 

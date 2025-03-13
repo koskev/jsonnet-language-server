@@ -25,7 +25,6 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 	}
 
 	if s.clientCapabilities.Workspace.WorkspaceEdit.DocumentChanges {
-
 		for fileName, edit := range edits {
 			doc, err := s.cache.Get(protocol.DocumentURI(fileName))
 			version := int32(0)
@@ -42,7 +41,6 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 				},
 			})
 		}
-
 	} else {
 		response.Changes = edits
 	}
