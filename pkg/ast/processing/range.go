@@ -7,7 +7,7 @@ func InRange(point ast.Location, theRange ast.LocationRange) bool {
 		return false
 	}
 
-	if point.Line == theRange.End.Line && point.Column >= theRange.End.Column {
+	if point.Line == theRange.End.Line && point.Column > theRange.End.Column {
 		return false
 	}
 
