@@ -38,6 +38,8 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 	case start == "std":
 		return nil, fmt.Errorf("cannot get definition of std lib")
 	case start == "$":
+		// TODO: this fixes local dollar but breaks all other dollars. Find a proper solution
+		// foundDesugaredObjects = p.FindTopLevelObjects(stack)
 		foundDesugaredObjects = p.FindTopLevelObjects(nodestack.NewNodeStack(stack.From))
 	case strings.Contains(start, "."):
 		foundDesugaredObjects = p.FindTopLevelObjectsInFile(start, "")

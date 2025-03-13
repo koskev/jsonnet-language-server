@@ -995,7 +995,11 @@ var definitionTestCases = []definitionTestCase{
 		results: []definitionResult{{
 			targetRange: protocol.Range{
 				Start: protocol.Position{Line: 1, Character: 2},
-				End:   protocol.Position{Line: 1, Character: 9},
+				End:   protocol.Position{Line: 1, Character: 19},
+			},
+			targetSelectionRange: protocol.Range{
+				Start: protocol.Position{Line: 1, Character: 2},
+				End:   protocol.Position{Line: 1, Character: 10},
 			},
 		}},
 	},

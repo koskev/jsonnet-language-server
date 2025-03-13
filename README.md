@@ -7,7 +7,6 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
  * Autocomplete function parameter names
  * Autocomplete function parameter with their default values
  * Find references
-    * Still missing a few like function parameters
  * Rename (only at declaration)
  * Bugfixes
   * Infinite loops
