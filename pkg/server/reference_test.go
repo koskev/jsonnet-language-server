@@ -209,8 +209,6 @@ func TestReference(t *testing.T) {
 				if r.targetFilename == "" {
 					r.targetFilename = tc.filename
 				}
-				//range := protocol.Range {
-				//}
 				computedRange := protocol.Range{
 					Start: r.targetBegin,
 					End: protocol.Position{
@@ -230,7 +228,6 @@ func TestReference(t *testing.T) {
 }
 
 func checkPoints(t *testing.T, points map[ast.Location]bool, begin ast.Location, end ast.Location) {
-
 	for loc, res := range points {
 		not := ""
 		if !res {
@@ -283,8 +280,8 @@ func TestIdentifierVal(t *testing.T) {
 	expected := []ast.LocationRange{
 		{
 			FileName: filename,
-			Begin:    ast.Location{4, 14},
-			End:      ast.Location{4, 17},
+			Begin:    ast.Location{Line: 4, Column: 14},
+			End:      ast.Location{Line: 4, Column: 17},
 		},
 		{
 			FileName: filename,

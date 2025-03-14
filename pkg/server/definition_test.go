@@ -988,21 +988,21 @@ var definitionTestCases = []definitionTestCase{
 			},
 		}},
 	},
-	//{
-	//	name:     "goto local dollar source",
-	//	filename: "./testdata/test_goto_definition_local_dollar.jsonnet",
-	//	position: protocol.Position{Line: 3, Character: 17},
-	//	results: []definitionResult{{
-	//		targetRange: protocol.Range{
-	//			Start: protocol.Position{Line: 1, Character: 2},
-	//			End:   protocol.Position{Line: 1, Character: 19},
-	//		},
-	//		targetSelectionRange: protocol.Range{
-	//			Start: protocol.Position{Line: 1, Character: 2},
-	//			End:   protocol.Position{Line: 1, Character: 10},
-	//		},
-	//	}},
-	//},
+	// {
+	// 	name:     "goto local dollar source",
+	// 	filename: "./testdata/test_goto_definition_local_dollar.jsonnet",
+	// 	position: protocol.Position{Line: 3, Character: 17},
+	// 	results: []definitionResult{{
+	// 		targetRange: protocol.Range{
+	// 			Start: protocol.Position{Line: 1, Character: 2},
+	// 			End:   protocol.Position{Line: 1, Character: 19},
+	// 		},
+	// 		targetSelectionRange: protocol.Range{
+	// 			Start: protocol.Position{Line: 1, Character: 2},
+	// 			End:   protocol.Position{Line: 1, Character: 10},
+	// 		},
+	// 	}},
+	// },
 }
 
 func TestDefinition(t *testing.T) {

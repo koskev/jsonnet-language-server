@@ -38,7 +38,6 @@ func (t *NodeTree) GetAllChildren() []ast.Node {
 	}
 
 	return children
-
 }
 
 func (t *NodeTree) String() string {

@@ -15,7 +15,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 	// First element will be super, self, or var name
 	// TODO: would 1 be okay?
 	if len(indexList) < 2 {
-		return nil, fmt.Errorf("Index list is too small")
+		return nil, fmt.Errorf("index list is too small")
 	}
 	start, indexList := indexList[0], indexList[1:]
 	switch {
@@ -59,16 +59,14 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 					tempStack := nodestack.NewNodeStack(param.DefaultArg)
 					indexList = append(tempStack.BuildIndexList(), indexList...)
 					return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
-				} else {
-					return []ObjectRange{
-						{
-							Filename:       param.LocRange.FileName,
-							SelectionRange: param.LocRange,
-							FullRange:      param.LocRange,
-						},
-					}, nil
-
 				}
+				return []ObjectRange{
+					{
+						Filename:       param.LocRange.FileName,
+						SelectionRange: param.LocRange,
+						FullRange:      param.LocRange,
+					},
+				}, nil
 			}
 			return nil, fmt.Errorf("could not find bind for %s", start)
 		}

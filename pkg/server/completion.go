@@ -70,21 +70,11 @@ func getCompletionLine(fileContent string, position protocol.Position) string {
 	return line
 }
 
-func getRightOf(input string, sep string) string {
-	out := strings.Split(input, sep)
-
-	return out[len(out)-1]
-}
-
 func (s *Server) completionFromStack(line string, stack *nodestack.NodeStack, vm *jsonnet.VM, position protocol.Position) []protocol.CompletionItem {
 	lineWords := splitWords(line)
 	lastWord := lineWords[len(lineWords)-1]
 	lastWord = strings.TrimRight(lastWord, ",;") // Ignore trailing commas and semicolons, they can present when someone is modifying an existing line
 	lastWord = strings.TrimSpace(lastWord)
-	// Allow arg=<complete>
-	//lastWord = getRightOf(lastWord, "=")
-	//// Allow obj:<complete>
-	//lastWord = getRightOf(lastWord, ":")
 
 	indexes := strings.Split(lastWord, ".")
 	log.Errorf("%s", indexes)

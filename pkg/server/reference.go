@@ -57,10 +57,10 @@ func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (
 	return "", fmt.Errorf("unable to find selected identifier")
 }
 
-func getAllFiles(dir string) []string {
+func getAllFiles(dir string) ([]string, error) {
 	// TODO: handle deleted and created files in cache
 	var files []string
-	filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -72,7 +72,10 @@ func getAllFiles(dir string) []string {
 		}
 		return nil
 	})
-	return files
+	if err != nil {
+		return nil, fmt.Errorf("getting all files: %w", err)
+	}
+	return files, nil
 }
 
 func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.LocationRange, error) {
@@ -139,7 +142,10 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 	allFiles := map[protocol.DocumentURI]struct{}{}
 
 	for _, folder := range folders {
-		files := getAllFiles(folder)
+		files, err := getAllFiles(folder)
+		if err != nil {
+			return nil, err
+		}
 		for _, file := range files {
 			allFiles[protocol.URIFromPath(file)] = struct{}{}
 		}

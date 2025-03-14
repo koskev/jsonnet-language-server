@@ -13,5 +13,4 @@ func TestConversion(t *testing.T) {
 		Character: 0,
 	}
 	assert.Equal(t, pos, ASTToProtocol(ProtocolToAST(pos)))
-
 }
