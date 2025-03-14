@@ -22,6 +22,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func (s *Server) getAst(fileName string) (*jsonnet.VM, ast.Node, error) {
+	vm := s.getVM(fileName)
+	doc, err := s.cache.Get(protocol.DocumentURI(fileName))
+	var root ast.Node
+	if err != nil {
+		root, _, err = vm.ImportAST("", fileName)
+		if err != nil {
+			return nil, nil, err
+		}
+	} else {
+		root = doc.AST
+	}
+	return vm, root, nil
+}
+
 func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (string, error) {
 	vm := s.getVM(filename)
 	root, _, err := vm.ImportAST("", filename)
@@ -134,6 +149,25 @@ func (s *Server) References(_ context.Context, params *protocol.ReferenceParams)
 }
 
 func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.Position, includeSelf bool) ([]protocol.Location, error) {
+	vm, root, err := s.getAst(sourceURI.SpanURI().Filename())
+	if err != nil {
+		return nil, err
+	}
+	locations, err := s.findDefinition(root, &protocol.DefinitionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+
+			Position: pos,
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: sourceURI,
+			},
+		},
+	}, vm)
+	if err == nil && len(locations) > 0 {
+		definition := locations[len(locations)-1]
+		sourceURI = definition.TargetURI
+		pos = definition.TargetRange.Start
+	}
+
 	folders := s.configuration.JPaths
 	u, err := url.Parse(string(sourceURI))
 	if err != nil {
@@ -188,16 +222,9 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 			// No matches
 			continue
 		}
-		vm := s.getVM(fileName)
-		doc, err := s.cache.Get(protocol.DocumentURI(fileName))
-		var root ast.Node
+		vm, root, err := s.getAst(fileName)
 		if err != nil {
-			root, _, err = vm.ImportAST("", fileName)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			root = doc.AST
+			return nil, fmt.Errorf("getting ast for %s: %w", fileName, err)
 		}
 		response = append(response, s.findReference(root, &targetLocation, sourceURI.SpanURI().Filename(), vm, locations)...)
 	}
