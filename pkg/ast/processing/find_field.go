@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
 	log "github.com/sirupsen/logrus"
@@ -79,10 +80,20 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 		case *ast.Import:
 			filename := bodyNode.File.Value
 			foundDesugaredObjects = p.FindTopLevelObjectsInFile(filename, "")
-		case *ast.Index, *ast.Apply:
+		case *ast.Index:
 			tempStack := nodestack.NewNodeStack(bodyNode)
 			indexList = append(tempStack.BuildIndexList(), indexList...)
 			return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
+		case *ast.Apply:
+			// The second call will error if this errors
+			evalResult, _ := p.vm.Evaluate(bodyNode)
+			node, err := jsonnet.SnippetToAST("", evalResult)
+			if err == nil {
+				tempStack := nodestack.NewNodeStack(node)
+				foundDesugaredObjects = p.FindTopLevelObjects(tempStack)
+			} else {
+				return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
+			}
 		case *ast.Function:
 			// If the function's body is an object, it means we can look for indexes within the function
 			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Body)...)

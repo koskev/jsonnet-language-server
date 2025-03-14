@@ -8,6 +8,7 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
  * Autocomplete function parameter with their default values
  * Find references
  * Rename
+ * Proper extcode support with autocomplete
  * Bugfixes
     * Infinite loops
     * Completion with named args and objects without a space
