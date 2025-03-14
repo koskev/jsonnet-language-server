@@ -77,7 +77,6 @@ func (s *Server) completionFromStack(line string, stack *nodestack.NodeStack, vm
 	lastWord = strings.TrimSpace(lastWord)
 
 	indexes := strings.Split(lastWord, ".")
-	log.Errorf("%s", indexes)
 
 	if len(indexes) == 1 {
 		items := []protocol.CompletionItem{}

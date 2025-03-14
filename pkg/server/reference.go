@@ -3,6 +3,7 @@ package server
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -72,7 +73,7 @@ func getAllFiles(dir string) ([]string, error) {
 		}
 		return nil
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return nil, fmt.Errorf("getting all files: %w", err)
 	}
 	return files, nil

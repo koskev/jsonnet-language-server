@@ -107,7 +107,6 @@ func FindNodeByPosition(node ast.Node, location ast.Location) (*nodestack.NodeSt
 					stack.Push(field.Name)
 					stack.Push(body)
 				}
-
 			}
 			for _, local := range curr.Locals {
 				stack.Push(local.Body)
