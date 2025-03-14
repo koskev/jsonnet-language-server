@@ -42,9 +42,8 @@ func FindNodeByPositionForReference(node ast.Node, location ast.Location) (*node
 			for _, field := range curr.Fields {
 				body := field.Body
 				// Functions do not have a LocRange, so we use the one from the field's body
-				switch body := body.(type) {
-				case *ast.Function:
-					body.LocRange = field.LocRange
+				if funcBody, isFunc := body.(*ast.Function); isFunc {
+					funcBody.LocRange = field.LocRange
 				}
 				stack.Push(body)
 

@@ -17,8 +17,6 @@ type referenceResult struct {
 	// Defaults to filename
 	targetFilename string
 	targetBegin    protocol.Position
-	// Defaults to targetRange
-	targetSelectionRange protocol.Range
 }
 
 type referenceTestCase struct {
@@ -285,8 +283,8 @@ func TestIdentifierVal(t *testing.T) {
 		},
 		{
 			FileName: filename,
-			Begin:    ast.Location{4, 25},
-			End:      ast.Location{4, 28},
+			Begin:    ast.Location{Line: 4, Column: 25},
+			End:      ast.Location{Line: 4, Column: 28},
 		},
 	}
 
