@@ -761,6 +761,46 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "completion in named function arguments",
+			filename:        "./testdata/complete/functionargs.jsonnet",
+			replaceString:   "a: localfunc(arg=data),",
+			replaceByString: "a: localfunc(arg=d",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "data",
+						Kind:       protocol.VariableCompletion,
+						Detail:     "data",
+						InsertText: "data",
+						LabelDetails: protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "completion in named object arguments",
+			filename:        "./testdata/complete/functionargs.jsonnet",
+			replaceString:   "a: localfunc(arg=data),",
+			replaceByString: "a: d",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "data",
+						Kind:       protocol.VariableCompletion,
+						Detail:     "data",
+						InsertText: "data",
+						LabelDetails: protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

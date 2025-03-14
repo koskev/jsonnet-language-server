@@ -10,6 +10,7 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
  * Rename (only at declaration)
  * Bugfixes
   * Infinite loops
+  * Completion with named args and objects without a space
 
 ### TODO
  * Original Bugs
