@@ -9,14 +9,13 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
  * Find references
  * Rename (only at declaration)
  * Bugfixes
-  * Infinite loops
-  * Completion with named args and objects without a space
+    * Infinite loops
+    * Completion with named args and objects without a space
 
 ### TODO
  * Original Bugs
-  * Broken go to for dollar inside locals
-  * Go to definition does neither work with data in the cache nor after saving without a restart of the ls
- * Fix tests
+    * Broken go to for dollar inside locals
+    * Go to definition does neither work with data in the cache nor after saving without a restart of the ls
  * Proper caching implementation
  * General cleanup after understanding more lsp stuff
  * Code actions?

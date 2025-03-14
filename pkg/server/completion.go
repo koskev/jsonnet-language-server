@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -294,10 +295,6 @@ func splitWords(input string) []string {
 				words = append(words, currentWord.String())
 				currentWord.Reset()
 			}
-		case '=':
-			currentWord.Reset()
-		case ':':
-			currentWord.Reset()
 		case '(':
 			insideParentheses = true
 			currentWord.WriteRune(char)
@@ -305,7 +302,12 @@ func splitWords(input string) []string {
 			currentWord.WriteRune(char)
 			insideParentheses = false
 		default:
-			currentWord.WriteRune(char)
+			regex := regexp.MustCompile(`[_a-zA-Z0-9\.,$]`)
+			if regex.MatchString(string(char)) {
+				currentWord.WriteRune(char)
+			} else {
+				currentWord.Reset()
+			}
 		}
 	}
 
