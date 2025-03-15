@@ -26,9 +26,10 @@ func getFunctionCallNode(stack *nodestack.NodeStack) (*ast.Apply, error) {
 	return nil, fmt.Errorf("unable to find any locals")
 }
 
-func (s *Server) getFunctionCallTarget(root ast.Node, functionNode *ast.Apply, target protocol.DocumentURI) (*ast.Function, error) {
+func (s *Server) getFunctionCallTarget(root ast.Node, functionNode ast.Node, target protocol.DocumentURI) (*ast.Function, error) {
 	vm := s.getVM(target.SpanURI().Filename())
-	locations, err := s.findDefinition(root, &protocol.DefinitionParams{
+	var locations []protocol.DefinitionLink
+	beginLocations, err := s.findDefinition(root, &protocol.DefinitionParams{
 		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 			TextDocument: protocol.TextDocumentIdentifier{
 				URI: target,
@@ -36,9 +37,23 @@ func (s *Server) getFunctionCallTarget(root ast.Node, functionNode *ast.Apply, t
 			Position: position.ASTToProtocol(functionNode.Loc().Begin),
 		},
 	}, vm)
-	if err != nil {
-		return nil, fmt.Errorf("finding function: %w", err)
+	if err == nil {
+		locations = append(locations, beginLocations...)
 	}
+
+	endLocations, err := s.findDefinition(root, &protocol.DefinitionParams{
+		TextDocumentPositionParams: protocol.TextDocumentPositionParams{
+			TextDocument: protocol.TextDocumentIdentifier{
+				URI: target,
+			},
+			Position: position.ASTToProtocol(functionNode.Loc().End),
+		},
+	}, vm)
+	if err == nil {
+		locations = append(locations, endLocations...)
+	} else {
+	}
+
 	for _, location := range locations {
 		root, _, err := vm.ImportAST("", location.TargetURI.SpanURI().Filename())
 		if err != nil {
