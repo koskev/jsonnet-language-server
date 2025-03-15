@@ -58,6 +58,7 @@ func main() {
 		JPaths:                    filepath.SplitList(os.Getenv("JSONNET_PATH")),
 		FormattingOptions:         formatter.DefaultOptions(),
 		ShowDocstringInCompletion: false,
+		MaxInlayLength:            120,
 	}
 	log.SetLevel(log.InfoLevel)
 

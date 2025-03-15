@@ -23,6 +23,7 @@ type Configuration struct {
 	EnableEvalDiagnostics     bool
 	EnableLintDiagnostics     bool
 	ShowDocstringInCompletion bool
+	MaxInlayLength            int
 }
 
 func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidChangeConfigurationParams) error {

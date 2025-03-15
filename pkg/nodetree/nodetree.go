@@ -29,6 +29,31 @@ func BuildTree(parent *NodeTree, node ast.Node) *NodeTree {
 	return tree
 }
 
+// Why are Go generics to shitty!?!?
+func GetTopNodesOfType[T ast.Node](tree *NodeTree) []T {
+	var children []T
+	if node, ok := tree.Node.(T); ok {
+		children = append(children, node)
+	} else {
+		for _, child := range tree.Children {
+			children = append(children, GetTopNodesOfType[T](child)...)
+		}
+	}
+	return children
+}
+
+func (t *NodeTree) GetDeepestNodes() []ast.Node {
+	var children []ast.Node
+	if len(t.Children) == 0 {
+		children = append(children, t.Node)
+	} else {
+		for _, child := range t.Children {
+			children = append(children, child.GetDeepestNodes()...)
+		}
+	}
+	return children
+}
+
 func (t *NodeTree) GetAllChildren() []ast.Node {
 	var children []ast.Node
 

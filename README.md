@@ -10,12 +10,16 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
  * Rename
  * Proper extcode support with autocomplete
  * Very basic signature help
- * Inlay hints for unnamed function parameters
+ * Inlay hints
+   * unnamed function parameters
+   * Index (e.g. extcode variables)
  * Bugfixes
     * Infinite loops
     * Completion with named args and objects without a space
 
 ### TODO
+ * Autocomplete for (import "a.libsonnet").xyz
+ * Refactor/Cleanup new features
  * Original Bugs
     * Broken go to for dollar inside locals
  * Proper caching implementation
