@@ -51,7 +51,6 @@ func (s *Server) getFunctionCallTarget(root ast.Node, functionNode ast.Node, tar
 	}, vm)
 	if err == nil {
 		locations = append(locations, endLocations...)
-	} else {
 	}
 
 	for _, location := range locations {
