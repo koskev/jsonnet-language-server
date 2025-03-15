@@ -148,10 +148,6 @@ func (s *Server) Shutdown(context.Context) error {
 	return nil
 }
 
-func (s *Server) SignatureHelp(context.Context, *protocol.SignatureHelpParams) (*protocol.SignatureHelp, error) {
-	return nil, notImplemented("SignatureHelp")
-}
-
 func (s *Server) Subtypes(context.Context, *protocol.TypeHierarchySubtypesParams) ([]protocol.TypeHierarchyItem, error) {
 	return nil, notImplemented("Subtypes")
 }

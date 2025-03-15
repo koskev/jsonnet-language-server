@@ -161,6 +161,9 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 				},
 			},
 			RenameProvider: true,
+			SignatureHelpProvider: protocol.SignatureHelpOptions{
+				TriggerCharacters: []string{"(", ","},
+			},
 		},
 		ServerInfo: struct {
 			Name    string `json:"name"`
