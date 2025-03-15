@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/google/go-jsonnet"
@@ -35,6 +36,9 @@ func (s *Server) InlayHint(_ context.Context, params *protocol.InlayHintParams) 
 
 	inlayHints = append(inlayHints, s.getInlayHintIndex(tree, vm)...)
 	inlayHints = append(inlayHints, s.getInlayHintApplyArgs(tree, doc.AST, params.TextDocument.URI)...)
+	if s.configuration.EnableDebugAstInlay {
+		inlayHints = append(inlayHints, s.getInlayHintASTDebug(tree)...)
+	}
 	return inlayHints, nil
 }
 
@@ -107,6 +111,24 @@ func (s *Server) getInlayHintApplyArgs(tree *nodetree.NodeTree, root ast.Node, u
 				},
 			})
 		}
+	}
+	return inlayHints
+}
+
+func (s *Server) getInlayHintASTDebug(tree *nodetree.NodeTree) []protocol.InlayHint {
+	var inlayHints []protocol.InlayHint
+
+	for _, currentNode := range tree.GetAllChildren() {
+		pos := position.ASTToProtocol(currentNode.Loc().Begin)
+		inlayHints = append(inlayHints, protocol.InlayHint{
+			Position:     &pos,
+			PaddingRight: true,
+			Label: []protocol.InlayHintLabelPart{
+				{
+					Value: reflect.TypeOf(currentNode).String(),
+				},
+			},
+		})
 	}
 	return inlayHints
 }
