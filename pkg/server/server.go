@@ -164,6 +164,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 			SignatureHelpProvider: protocol.SignatureHelpOptions{
 				TriggerCharacters: []string{"(", ","},
 			},
+			InlayHintProvider: true,
 		},
 		ServerInfo: protocol.PServerInfoMsg_initialize{
 			Name:    s.name,
