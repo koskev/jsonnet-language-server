@@ -85,15 +85,23 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			indexList = append(tempStack.BuildIndexList(), indexList...)
 			return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
 		case *ast.Apply:
-			// The second call will error if this errors
-			evalResult, _ := p.vm.Evaluate(bodyNode)
-			node, err := jsonnet.SnippetToAST("", evalResult)
-			if err == nil {
-				tempStack := nodestack.NewNodeStack(node)
-				foundDesugaredObjects = p.FindTopLevelObjects(tempStack)
-			} else {
-				return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
+			tempStack := nodestack.NewNodeStack(bodyNode)
+			localIndexList := tempStack.Clone().BuildIndexList()
+			// TODO: this an ugly workaround for extVar and not breaking other stuff
+			if len(localIndexList) == 2 && localIndexList[0] == "std" && localIndexList[1] == "extVar" {
+				// The second call will error if this errors
+				evalResult, _ := p.vm.Evaluate(bodyNode)
+				node, err := jsonnet.SnippetToAST("", evalResult)
+				if err == nil {
+					tempStack := nodestack.NewNodeStack(node)
+					foundDesugaredObjects = p.FindTopLevelObjects(tempStack)
+					// break the select
+					break
+				}
 			}
+			// for err or non special case
+			indexList = append(tempStack.BuildIndexList(), indexList...)
+			return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
 		case *ast.Function:
 			// If the function's body is an object, it means we can look for indexes within the function
 			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Body)...)
