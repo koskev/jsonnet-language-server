@@ -801,6 +801,46 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "completion for extcode",
+			filename:        "./testdata/complete/extcode.jsonnet",
+			replaceString:   "extcode.objA,",
+			replaceByString: "extcode.o",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "objA",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "extcode.objA",
+						InsertText: "objA",
+						LabelDetails: protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "completion for extcode computed",
+			filename:        "./testdata/complete/extcode.jsonnet",
+			replaceString:   "extcode.objA,",
+			replaceByString: "extcode.c",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "computed",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "extcode.computed",
+						InsertText: "computed",
+						LabelDetails: protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -809,6 +849,9 @@ func TestCompletion(t *testing.T) {
 
 			server, fileURI := testServerWithFile(t, completionTestStdlib, string(content))
 			server.configuration.JPaths = []string{"testdata"}
+			server.configuration.ExtCode = map[string]string{
+				"code": "{ objA: 5, ['%s' % 'computed']: 3}",
+			}
 
 			replacedContent := strings.ReplaceAll(string(content), tc.replaceString, tc.replaceByString)
 
