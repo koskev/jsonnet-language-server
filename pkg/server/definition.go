@@ -16,7 +16,7 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams) (protocol.Definition, error) {
+func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams) ([]protocol.Location, error) {
 	responseDefLinks, err := s.definitionLink(params)
 	if err != nil {
 		// Returning an error too often can lead to the client killing the language server
@@ -27,7 +27,7 @@ func (s *Server) Definition(_ context.Context, params *protocol.DefinitionParams
 
 	// TODO: Support LocationLink instead of Location (this needs to be changed in the upstream protocol lib)
 	// When that's done, we can get rid of the intermediary `definitionLink` function which is used for testing
-	var response protocol.Definition
+	var response []protocol.Location
 	for _, item := range responseDefLinks {
 		response = append(response, protocol.Location{
 			URI:   item.TargetURI,

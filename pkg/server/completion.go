@@ -229,7 +229,7 @@ func createCompletionItem(label, prefix string, kind protocol.CompletionItemKind
 		Label:  label,
 		Detail: detail,
 		Kind:   kind,
-		LabelDetails: protocol.CompletionItemLabelDetails{
+		LabelDetails: &protocol.CompletionItemLabelDetails{
 			Description: typeToString(body),
 		},
 		InsertText: insertText,

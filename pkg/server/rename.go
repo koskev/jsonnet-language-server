@@ -13,15 +13,15 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 	}
 
 	var response protocol.WorkspaceEdit
-	edits := map[string][]protocol.TextEdit{}
+	edits := map[protocol.DocumentURI][]protocol.TextEdit{}
 
 	for _, pos := range positions {
-		localEdits := edits[string(pos.URI)]
+		localEdits := edits[pos.URI]
 		localEdits = append(localEdits, protocol.TextEdit{
 			Range:   pos.Range,
 			NewText: params.NewName,
 		})
-		edits[string(pos.URI)] = localEdits
+		edits[pos.URI] = localEdits
 	}
 
 	if s.clientCapabilities.Workspace.WorkspaceEdit.DocumentChanges {
@@ -31,13 +31,15 @@ func (s *Server) Rename(_ context.Context, params *protocol.RenameParams) (*prot
 			if err == nil {
 				version = doc.Item.Version
 			}
-			response.DocumentChanges = append(response.DocumentChanges, protocol.TextDocumentEdit{
-				Edits: edit,
-				TextDocument: protocol.OptionalVersionedTextDocumentIdentifier{
-					TextDocumentIdentifier: protocol.TextDocumentIdentifier{
-						URI: protocol.DocumentURI(fileName),
+			response.DocumentChanges = append(response.DocumentChanges, protocol.DocumentChanges{
+				TextDocumentEdit: &protocol.TextDocumentEdit{
+					Edits: edit,
+					TextDocument: protocol.OptionalVersionedTextDocumentIdentifier{
+						TextDocumentIdentifier: protocol.TextDocumentIdentifier{
+							URI: protocol.DocumentURI(fileName),
+						},
+						Version: version,
 					},
-					Version: version,
 				},
 			})
 		}

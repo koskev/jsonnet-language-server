@@ -28,7 +28,7 @@ func (s *Server) ColorPresentation(context.Context, *protocol.ColorPresentationP
 	return nil, notImplemented("ColorPresentation")
 }
 
-func (s *Server) Declaration(context.Context, *protocol.DeclarationParams) (protocol.Declaration, error) {
+func (s *Server) Declaration(context.Context, *protocol.DeclarationParams) (*protocol.Or_textDocument_declaration, error) {
 	return nil, notImplemented("Declaration")
 }
 
@@ -56,7 +56,7 @@ func (s *Server) FoldingRange(context.Context, *protocol.FoldingRangeParams) ([]
 	return nil, notImplemented("FoldingRange")
 }
 
-func (s *Server) Implementation(context.Context, *protocol.ImplementationParams) (protocol.Definition, error) {
+func (s *Server) Implementation(context.Context, *protocol.ImplementationParams) ([]protocol.Location, error) {
 	return nil, notImplemented("Implementation")
 }
 
@@ -92,7 +92,7 @@ func (s *Server) PrepareCallHierarchy(context.Context, *protocol.CallHierarchyPr
 	return nil, notImplemented("PrepareCallHierarchy")
 }
 
-func (s *Server) PrepareRename(context.Context, *protocol.PrepareRenameParams) (*protocol.Range, error) {
+func (s *Server) PrepareRename(context.Context, *protocol.PrepareRenameParams) (*protocol.PrepareRename2Gn, error) {
 	return nil, notImplemented("PrepareRange")
 }
 
@@ -104,7 +104,7 @@ func (s *Server) RangeFormatting(context.Context, *protocol.DocumentRangeFormatt
 	return nil, notImplemented("RangeFormatting")
 }
 
-func (s *Server) Resolve(context.Context, *protocol.CompletionItem) (*protocol.CompletionItem, error) {
+func (s *Server) Resolve(context.Context, *protocol.InlayHint) (*protocol.InlayHint, error) {
 	return nil, notImplemented("Resolve")
 }
 
@@ -160,7 +160,7 @@ func (s *Server) Symbol(context.Context, *protocol.WorkspaceSymbolParams) ([]pro
 	return nil, notImplemented("Symbol")
 }
 
-func (s *Server) TypeDefinition(context.Context, *protocol.TypeDefinitionParams) (protocol.Definition, error) {
+func (s *Server) TypeDefinition(context.Context, *protocol.TypeDefinitionParams) ([]protocol.Location, error) {
 	return nil, notImplemented("TypeDefinition")
 }
 
@@ -220,6 +220,38 @@ func (s *Server) DidDeleteFiles(context.Context, *protocol.DeleteFilesParams) er
 // TODO(#13): Understand why the server capabilities includes documentlink.
 func (s *Server) DocumentLink(context.Context, *protocol.DocumentLinkParams) ([]protocol.DocumentLink, error) {
 	return nil, nil
+}
+func (s *Server) DidChangeNotebookDocument(context.Context, *protocol.DidChangeNotebookDocumentParams) error {
+	return notImplemented("DidChangeNotebookDocument")
+}
+func (s *Server) DidCloseNotebookDocument(context.Context, *protocol.DidCloseNotebookDocumentParams) error {
+	return notImplemented("DidCloseNotebookDocumentParams")
+}
+func (s *Server) DidOpenNotebookDocument(context.Context, *protocol.DidOpenNotebookDocumentParams) error {
+	return notImplemented("DidOpenNotebookDocumentParams")
+}
+func (s *Server) DidSaveNotebookDocument(context.Context, *protocol.DidSaveNotebookDocumentParams) error {
+	return notImplemented("DidSaveNotebookDocumentParams")
+}
+func (s *Server) InlayHintRefresh(context.Context) error {
+	return notImplemented("InlayHintRefresh")
+}
+func (s *Server) InlineValue(context.Context, *protocol.InlineValueParams) ([]protocol.InlineValue, error) {
+	return nil, notImplemented("InlineValue")
+}
+
+func (s *Server) InlineValueRefresh(context.Context) error {
+	return notImplemented("InlineValueRefresh")
+}
+
+func (s *Server) Progress(context.Context, *protocol.ProgressParams) error {
+	return notImplemented("Progress")
+}
+func (s *Server) ResolveCompletionItem(context.Context, *protocol.CompletionItem) (*protocol.CompletionItem, error) {
+	return nil, notImplemented("ResolveCompletionItem")
+}
+func (s *Server) ResolveWorkspaceSymbol(context.Context, *protocol.WorkspaceSymbol) (*protocol.WorkspaceSymbol, error) {
+	return nil, notImplemented("ResolveWorkspaceSymbol")
 }
 
 func notImplemented(method string) error {

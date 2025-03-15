@@ -162,7 +162,7 @@ func TestCompletion(t *testing.T) {
 					Kind:       protocol.FunctionCompletion,
 					Detail:     "self.greet(name)",
 					InsertText: "greet(name)",
-					LabelDetails: protocol.CompletionItemLabelDetails{
+					LabelDetails: &protocol.CompletionItemLabelDetails{
 						Description: "function",
 					},
 				}},
@@ -190,7 +190,7 @@ func TestCompletion(t *testing.T) {
 					Kind:       protocol.FunctionCompletion,
 					Detail:     "self.greet(name)",
 					InsertText: "greet(name)",
-					LabelDetails: protocol.CompletionItemLabelDetails{
+					LabelDetails: &protocol.CompletionItemLabelDetails{
 						Description: "function",
 					},
 				}},
@@ -208,7 +208,7 @@ func TestCompletion(t *testing.T) {
 					Kind:       protocol.FieldCompletion,
 					Detail:     "self.foo",
 					InsertText: "foo",
-					LabelDetails: protocol.CompletionItemLabelDetails{
+					LabelDetails: &protocol.CompletionItemLabelDetails{
 						Description: "string",
 					},
 				}},
@@ -227,7 +227,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.VariableCompletion,
 						Detail:     "somevar2",
 						InsertText: "somevar2",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -236,7 +236,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.VariableCompletion,
 						Detail:     "somevar",
 						InsertText: "somevar",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -256,7 +256,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.VariableCompletion,
 						Detail:     "somevar2",
 						InsertText: "somevar2",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -265,7 +265,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.VariableCompletion,
 						Detail:     "somevar",
 						InsertText: "somevar",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -295,7 +295,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "otherfile.bar",
 						InsertText: "bar",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -304,7 +304,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "otherfile.foo",
 						InsertText: "foo",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -324,7 +324,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "otherfile.bar",
 						InsertText: "bar",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -344,7 +344,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "$.attribute",
 						InsertText: "attribute",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -353,7 +353,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "$.attribute2",
 						InsertText: "attribute2",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -373,7 +373,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "$.attribute",
 						InsertText: "attribute",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -382,7 +382,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "$.attribute2",
 						InsertText: "attribute2",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -402,7 +402,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "file.bar",
 						InsertText: "bar",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -411,7 +411,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "file.foo",
 						InsertText: "foo",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -431,7 +431,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "obj.bar",
 						InsertText: "bar",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -440,7 +440,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "obj.foo",
 						InsertText: "foo",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -460,7 +460,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "hello.hel",
 						InsertText: "hel",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -469,7 +469,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "hello.hello",
 						InsertText: "hello",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -490,7 +490,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "hello.hel.wel",
 						InsertText: "wel",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -521,7 +521,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "hello.to",
 						InsertText: "to",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -541,7 +541,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "hello.to.the",
 						InsertText: "the",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -561,7 +561,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "hello2.the",
 						InsertText: "the",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -581,7 +581,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "hello3.world",
 						InsertText: "world",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -601,7 +601,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "g.hello.to",
 						InsertText: "to",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
 					},
@@ -621,7 +621,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "lib['1num']",
 						InsertText: "['1num']",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 						TextEdit: &protocol.TextEdit{
@@ -643,7 +643,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FunctionCompletion,
 						Detail:     "lib['abc#func'](param)",
 						InsertText: "['abc#func'](param)",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "function",
 						},
 						TextEdit: &protocol.TextEdit{
@@ -665,7 +665,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "lib['abc#var']",
 						InsertText: "['abc#var']",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 						TextEdit: &protocol.TextEdit{
@@ -698,7 +698,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "myfunc(arg1, arg2).atb1",
 						InsertText: "atb1",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "variable",
 						},
 					},
@@ -707,7 +707,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "myfunc(arg1, arg2).atb2",
 						InsertText: "atb2",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "variable",
 						},
 					},
@@ -727,7 +727,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "self.a",
 						InsertText: "a",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "variable",
 						},
 					},
@@ -736,7 +736,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "self.b",
 						InsertText: "b",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "variable",
 						},
 					},
@@ -745,7 +745,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "self.c",
 						InsertText: "c",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -754,7 +754,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "self.test",
 						InsertText: "test",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "*ast.Apply",
 						},
 					},
@@ -774,7 +774,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.VariableCompletion,
 						Detail:     "data",
 						InsertText: "data",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -794,7 +794,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.VariableCompletion,
 						Detail:     "data",
 						InsertText: "data",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
 					},
@@ -814,7 +814,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "extcode.objA",
 						InsertText: "objA",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "number",
 						},
 					},
@@ -834,7 +834,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "extcode.computed",
 						InsertText: "computed",
-						LabelDetails: protocol.CompletionItemLabelDetails{
+						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "number",
 						},
 					},

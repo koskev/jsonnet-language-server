@@ -165,10 +165,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 				TriggerCharacters: []string{"(", ","},
 			},
 		},
-		ServerInfo: struct {
-			Name    string `json:"name"`
-			Version string `json:"version,omitempty"`
-		}{
+		ServerInfo: protocol.PServerInfoMsg_initialize{
 			Name:    s.name,
 			Version: s.version,
 		},

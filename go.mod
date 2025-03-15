@@ -44,3 +44,5 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
+
+replace github.com/jdbaldry/go-language-server-protocol => github.com/koskev/go-language-server-protocol v0.0.0-20250315171812-de9121a9158a
