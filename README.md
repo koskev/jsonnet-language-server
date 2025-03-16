@@ -18,7 +18,11 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
     * Completion with named args and objects without a space
 
 ### TODO
- * Autocomplete for (import "a.libsonnet").xyz
+ * Rework autocomplete to use the AST in most (all?) cases. Fixes
+   * (import "a.libsonnet").xyz
+   * var .name
+   * var\n .name
+   * and others
  * Refactor/Cleanup new features
  * Original Bugs
     * Broken go to for dollar inside locals

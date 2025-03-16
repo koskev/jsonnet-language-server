@@ -72,6 +72,11 @@ func getCompletionLine(fileContent string, position protocol.Position) string {
 }
 
 func (s *Server) completionFromStack(line string, stack *nodestack.NodeStack, vm *jsonnet.VM, position protocol.Position) []protocol.CompletionItem {
+	// TODO: Rework this to be ast based. Otherwise stuff like
+	// var .name
+	// var.\n name
+	// var\n .name
+	// And many others will be broken
 	lineWords := splitWords(line)
 	lastWord := lineWords[len(lineWords)-1]
 	lastWord = strings.TrimRight(lastWord, ",;") // Ignore trailing commas and semicolons, they can present when someone is modifying an existing line
@@ -305,7 +310,8 @@ func splitWords(input string) []string {
 			regex := regexp.MustCompile(`[_a-zA-Z0-9\.,$]`)
 			if regex.MatchString(string(char)) {
 				currentWord.WriteRune(char)
-			} else {
+			} else if currentWord.Len() > 0 {
+				words = append(words, currentWord.String())
 				currentWord.Reset()
 			}
 		}
