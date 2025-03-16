@@ -102,6 +102,18 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 				return fmt.Errorf("%w: ext_code parsing failed: %v", jsonrpc2.ErrInvalidParams, err)
 			}
 			s.configuration.ExtCode = newCode
+		case "max_inlay_length":
+			if length, ok := sv.(int); ok {
+				s.configuration.MaxInlayLength = length
+			} else {
+				return fmt.Errorf("%w: unsupported settings value for max_inlay_length. expected int. got: %T", jsonrpc2.ErrInvalidParams, sv)
+			}
+		case "enable_debug_ast_inlay":
+			if boolVal, ok := sv.(bool); ok {
+				s.configuration.EnableDebugAstInlay = boolVal
+			} else {
+				return fmt.Errorf("%w: unsupported settings value for enable_debug_ast_inlay. expected boolean. got: %T", jsonrpc2.ErrInvalidParams, sv)
+			}
 
 		default:
 			return fmt.Errorf("%w: unsupported settings key: %q", jsonrpc2.ErrInvalidParams, sk)
