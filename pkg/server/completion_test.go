@@ -149,6 +149,7 @@ func TestCompletion(t *testing.T) {
 		filename                       string
 		replaceString, replaceByString string
 		expected                       protocol.CompletionList
+		completionOffset               int
 	}{
 		{
 			name:            "self function",
@@ -361,10 +362,11 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
-			name:            "autocomplete dollar sign, end with comma",
-			filename:        "testdata/dollar-simple.jsonnet",
-			replaceString:   "test: $.attribute,",
-			replaceByString: "test: $.,",
+			name:             "autocomplete dollar sign, end with comma",
+			filename:         "testdata/dollar-simple.jsonnet",
+			replaceString:    "test: $.attribute,",
+			replaceByString:  "test: $.,",
+			completionOffset: -1, // Start at "." and not at ","
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
@@ -874,6 +876,8 @@ func TestCompletion(t *testing.T) {
 				}
 				cursorPosition.Line++
 			}
+			// This is worse than rust...
+			cursorPosition.Character = min(uint32(int64(cursorPosition.Character)+int64(tc.completionOffset)), cursorPosition.Character)
 			if cursorPosition.Character == 0 {
 				t.Fatal("Could not find cursor position for test. Replace probably didn't work")
 			}
@@ -885,7 +889,7 @@ func TestCompletion(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			assert.Equal(t, tc.expected, *result)
+			assert.Equal(t, tc.expected, *result, "position", cursorPosition)
 		})
 	}
 }

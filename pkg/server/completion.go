@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-jsonnet/ast"
 	"github.com/google/go-jsonnet/formatter"
 	"github.com/grafana/jsonnet-language-server/pkg/ast/processing"
+	"github.com/grafana/jsonnet-language-server/pkg/cst"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
@@ -57,26 +58,24 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		line = lastArg
 	}
 
-	items := s.completionFromStack(line, searchStack, vm, params.Position)
+	items := s.completionFromStack(doc.Item.Text, line, searchStack, vm, params.Position)
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 }
 
 func getCompletionLine(fileContent string, position protocol.Position) string {
 	line := strings.Split(fileContent, "\n")[position.Line]
 	charIndex := int(position.Character)
-	if charIndex > len(line) {
-		charIndex = len(line)
-	}
+	charIndex = min(charIndex, len(line))
 	line = line[:charIndex]
 	return line
 }
 
-func (s *Server) completionFromStack(line string, stack *nodestack.NodeStack, vm *jsonnet.VM, position protocol.Position) []protocol.CompletionItem {
-	// TODO: Rework this to be ast based. Otherwise stuff like
+func (s *Server) completionFromStack(content string, line string, stack *nodestack.NodeStack, vm *jsonnet.VM, pos protocol.Position) []protocol.CompletionItem {
+	// TODO: fix these:
 	// var .name
 	// var.\n name
 	// var\n .name
-	// And many others will be broken
+	// This might include some preprocessing. Is a cst the correct tool at this point?
 	lineWords := splitWords(line)
 	lastWord := lineWords[len(lineWords)-1]
 	lastWord = strings.TrimRight(lastWord, ",;") // Ignore trailing commas and semicolons, they can present when someone is modifying an existing line
@@ -84,33 +83,36 @@ func (s *Server) completionFromStack(line string, stack *nodestack.NodeStack, vm
 
 	indexes := strings.Split(lastWord, ".")
 
-	if len(indexes) == 1 {
-		items := []protocol.CompletionItem{}
-		// firstIndex is a variable (local) completion
-		for !stack.IsEmpty() {
-			curr := stack.Pop()
-			var binds ast.LocalBinds
-			switch typedCurr := curr.(type) {
-			case *ast.DesugaredObject:
-				binds = typedCurr.Locals
-			case *ast.Local:
-				binds = typedCurr.Binds
-			case *ast.Function:
-				for _, param := range typedCurr.Parameters {
-					items = append(items, createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, position))
-				}
-			default:
-				continue
-			}
-			for _, bind := range binds {
-				label := string(bind.Variable)
-				if strings.HasPrefix(label, indexes[0]) && label != "$" {
-					items = append(items, createCompletionItem(label, "", protocol.VariableCompletion, bind.Body, position))
-				}
-			}
-		}
-		return items
+	root, err := cst.NewTree(context.TODO(), content)
+	if err != nil {
+		return []protocol.CompletionItem{}
 	}
+	found := cst.GetNodeAtPos(root, position.ProtocolToCST(pos))
+	found = cst.GetNonSymbolNode(found)
+
+	log.Tracef("NODE %v %v", found.GrammarName(), found.GrammarId())
+	log.Tracef("Prev NODE %v", cst.GetNodeString(cst.GetPrevNode(found)))
+	log.Tracef("Prev NODE Non Sybol %v", cst.GetNodeString(cst.GetNonSymbolNode(cst.GetPrevNode(found))))
+	log.Tracef("INDEX %v", indexes)
+
+	if cst.IsNode(found, cst.NodeFieldAccess) ||
+		cst.IsNode(found.Parent(), cst.NodeFieldAccess) ||
+		cst.IsNodeAny(cst.GetNonSymbolNode(cst.GetPrevNode(found)), []uint16{
+			cst.NodeBind,
+			cst.NodeSelf,
+			cst.NodeDollar,
+			cst.NodeID,
+			cst.NodeFunctionCall,
+		}) {
+		return s.completeLocal(indexes, vm, line, pos, stack)
+	}
+
+	log.Errorf("%+v", found)
+	return s.completeGlobal(indexes, stack, pos)
+}
+
+func (s *Server) completeLocal(indexes []string, vm *jsonnet.VM, line string, pos protocol.Position, stack *nodestack.NodeStack) []protocol.CompletionItem {
+	log.Tracef("##### Local path")
 
 	processor := processing.NewProcessor(s.cache, vm)
 	ranges, err := processor.FindRangesFromIndexList(stack, indexes, true)
@@ -120,7 +122,36 @@ func (s *Server) completionFromStack(line string, stack *nodestack.NodeStack, vm
 	}
 
 	completionPrefix := strings.Join(indexes[:len(indexes)-1], ".")
-	return s.createCompletionItemsFromRanges(ranges, completionPrefix, line, position)
+	return s.createCompletionItemsFromRanges(ranges, completionPrefix, line, pos)
+}
+
+func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
+	log.Tracef("##### Global path")
+	items := []protocol.CompletionItem{}
+	// firstIndex is a variable (local) completion
+	for !stack.IsEmpty() {
+		curr := stack.Pop()
+		var binds ast.LocalBinds
+		switch typedCurr := curr.(type) {
+		case *ast.DesugaredObject:
+			binds = typedCurr.Locals
+		case *ast.Local:
+			binds = typedCurr.Binds
+		case *ast.Function:
+			for _, param := range typedCurr.Parameters {
+				items = append(items, createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos))
+			}
+		default:
+			continue
+		}
+		for _, bind := range binds {
+			label := string(bind.Variable)
+			if strings.HasPrefix(label, indexes[0]) && label != "$" {
+				items = append(items, createCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos))
+			}
+		}
+	}
+	return items
 }
 
 func (s *Server) completionStdLib(line string) []protocol.CompletionItem {
