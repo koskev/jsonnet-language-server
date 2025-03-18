@@ -150,6 +150,7 @@ func TestCompletion(t *testing.T) {
 		replaceString, replaceByString string
 		expected                       protocol.CompletionList
 		completionOffset               int
+		lineOverride                   int
 	}{
 		{
 			name:            "self function",
@@ -777,7 +778,7 @@ func TestCompletion(t *testing.T) {
 						Detail:     "data",
 						InsertText: "data",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "string",
+							Description: "object",
 						},
 					},
 				},
@@ -796,6 +797,48 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.VariableCompletion,
 						Detail:     "data",
 						InsertText: "data",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "completion of argument",
+			filename:        "./testdata/complete/functionargs.jsonnet",
+			replaceString:   "arg.coolkey,",
+			replaceByString: "a",
+			lineOverride:    3,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg",
+						Kind:       protocol.VariableCompletion,
+						Detail:     "arg",
+						InsertText: "arg",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "completion of argument default value",
+			filename:        "./testdata/complete/functionargs.jsonnet",
+			replaceString:   "arg.coolkey,",
+			replaceByString: "arg.",
+			lineOverride:    3,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "coolkey",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "arg.coolkey",
+						InsertText: "coolkey",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
@@ -855,6 +898,10 @@ func TestCompletion(t *testing.T) {
 				"code": "{ objA: 5, ['%s' % 'computed']: 3}",
 			}
 
+			doc, err := server.cache.Get(fileURI)
+			require.NoError(t, err)
+			require.NotNil(t, doc.AST)
+
 			replacedContent := strings.ReplaceAll(string(content), tc.replaceString, tc.replaceByString)
 
 			err = server.DidChange(context.Background(), &protocol.DidChangeTextDocumentParams{
@@ -876,11 +923,18 @@ func TestCompletion(t *testing.T) {
 				}
 				cursorPosition.Line++
 			}
+			if tc.lineOverride != 0 {
+				cursorPosition.Line = uint32(tc.lineOverride)
+			}
 			// This is worse than rust...
 			cursorPosition.Character = min(uint32(int64(cursorPosition.Character)+int64(tc.completionOffset)), cursorPosition.Character)
 			if cursorPosition.Character == 0 {
 				t.Fatal("Could not find cursor position for test. Replace probably didn't work")
 			}
+
+			doc, err = server.cache.Get(fileURI)
+			require.NoError(t, err)
+			require.NotNil(t, doc.AST)
 
 			result, err := server.Completion(context.TODO(), &protocol.CompletionParams{
 				TextDocumentPositionParams: protocol.TextDocumentPositionParams{
@@ -889,7 +943,7 @@ func TestCompletion(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			assert.Equal(t, tc.expected, *result, "position", cursorPosition)
+			assert.Equal(t, tc.expected, *result, "position", cursorPosition, "file", fileURI)
 		})
 	}
 }

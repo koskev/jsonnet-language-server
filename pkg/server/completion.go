@@ -34,7 +34,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 
 	// Otherwise, parse the AST and search for completions
 	if doc.AST == nil {
-		log.Errorf("Completion: document was never successfully parsed, can't autocomplete")
+		log.Errorf("Completion: document %s was never successfully parsed, can't autocomplete", params.TextDocument.URI)
 		return nil, nil
 	}
 

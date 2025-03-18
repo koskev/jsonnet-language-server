@@ -1,7 +1,8 @@
-local localfunc(arg) = [
-  arg,
+local data = { coolkey: 'hello' };
+
+local localfunc(arg=data) = [
+  arg.coolkey,
 ];
-local data = 'hello';
 
 {
   a: localfunc(arg=data),
