@@ -886,6 +886,35 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "completion for binary object",
+			filename:        "./testdata/complete/binaryobject.jsonnet",
+			replaceString:   "a: binaryObject.one,",
+			replaceByString: "a: binaryObject.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "one",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "binaryObject.one",
+						InsertText: "one",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "two",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "binaryObject.two",
+						InsertText: "two",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -897,10 +926,6 @@ func TestCompletion(t *testing.T) {
 			server.configuration.ExtCode = map[string]string{
 				"code": "{ objA: 5, ['%s' % 'computed']: 3}",
 			}
-
-			doc, err := server.cache.Get(fileURI)
-			require.NoError(t, err)
-			require.NotNil(t, doc.AST)
 
 			replacedContent := strings.ReplaceAll(string(content), tc.replaceString, tc.replaceByString)
 
@@ -932,10 +957,6 @@ func TestCompletion(t *testing.T) {
 				t.Fatal("Could not find cursor position for test. Replace probably didn't work")
 			}
 
-			doc, err = server.cache.Get(fileURI)
-			require.NoError(t, err)
-			require.NotNil(t, doc.AST)
-
 			result, err := server.Completion(context.TODO(), &protocol.CompletionParams{
 				TextDocumentPositionParams: protocol.TextDocumentPositionParams{
 					TextDocument: protocol.TextDocumentIdentifier{URI: fileURI},
@@ -943,7 +964,7 @@ func TestCompletion(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			assert.Equal(t, tc.expected, *result, "position", cursorPosition, "file", fileURI)
+			assert.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
 		})
 	}
 }

@@ -105,6 +105,9 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 		case *ast.Function:
 			// If the function's body is an object, it means we can look for indexes within the function
 			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Body)...)
+		case *ast.Binary:
+			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Left)...)
+			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Right)...)
 		default:
 			return nil, fmt.Errorf("unexpected node type when finding bind for '%s': %s", start, reflect.TypeOf(bind.Body))
 		}

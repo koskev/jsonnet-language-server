@@ -16,6 +16,7 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
  * Bugfixes
     * Infinite loops
     * Completion with named args and objects without a space
+    * Binary Object completion
 
 ### TODO
  * Rework autocomplete to use an CST in most (all?) cases. Fixes
