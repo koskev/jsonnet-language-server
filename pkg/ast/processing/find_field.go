@@ -69,7 +69,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 					},
 				}, nil
 			}
-			return nil, fmt.Errorf("could not find bind for %s", start)
+			return nil, fmt.Errorf("could not find bind for start %s", start)
 		}
 		switch bodyNode := bind.Body.(type) {
 		case *ast.DesugaredObject:
@@ -88,7 +88,8 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			tempStack := nodestack.NewNodeStack(bodyNode)
 			localIndexList := tempStack.Clone().BuildIndexList()
 			// TODO: this an ugly workaround for extVar and not breaking other stuff
-			if len(localIndexList) == 2 && localIndexList[0] == "std" && localIndexList[1] == "extVar" {
+			// $std are internal calls (for example for loops)
+			if len(localIndexList) == 2 && ((localIndexList[0] == "std" && localIndexList[1] == "extVar") || localIndexList[0] == "$std") {
 				// The second call will error if this errors
 				evalResult, _ := p.vm.Evaluate(bodyNode)
 				node, err := jsonnet.SnippetToAST("", evalResult)
@@ -99,6 +100,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 					break
 				}
 			}
+			log.Errorf("Prev index %v new index %v", indexList, tempStack.Clone().BuildIndexList())
 			// for err or non special case
 			indexList = append(tempStack.BuildIndexList(), indexList...)
 			return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)

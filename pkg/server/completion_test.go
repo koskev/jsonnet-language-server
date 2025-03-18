@@ -915,6 +915,35 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "completion for in object hardcoded",
+			filename:        "./testdata/complete/forobj.jsonnet",
+			replaceString:   "a: forObj.one,",
+			replaceByString: "a: forObj.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "one",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "forObj.one",
+						InsertText: "one",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+					{
+						Label:      "two",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "forObj.two",
+						InsertText: "two",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
