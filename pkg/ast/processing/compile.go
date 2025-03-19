@@ -10,49 +10,36 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (p *Processor) CompileNode(root ast.Node, node ast.Node) (ast.Node, error) {
+func (p *Processor) CompileNode(node ast.Node) (ast.Node, error) {
 	t := nodetree.BuildTree(nil, node)
-	logrus.Errorf("###%s", t)
+	logrus.Errorf("PRE\n%s", t)
 
 	switch currentNode := node.(type) {
+	case *ast.Var:
+		varReference, err := p.FindVarReference(currentNode)
+		if err != nil {
+			return nil, err
+		}
+		return p.CompileNode(varReference)
+
 	case *ast.Apply:
-		logrus.Errorf("###### APPLY %+v target %v", node, reflect.TypeOf(currentNode.Target))
-		if target, ok := currentNode.Target.(*ast.Var); ok {
-			varReference, err := p.FindVarReference(target)
-			if err != nil {
-				return nil, err
-			}
-			node = varReference
-			//currentNode.Target = varReference
-			logrus.Errorf("Replaced target with %+v %v", varReference, reflect.TypeOf(varReference))
+		target, err := p.CompileNode(currentNode.Target)
+		if err != nil {
+			return nil, err
 		}
-		if n, ok := node.(*ast.Function); ok {
-			if v, ok := n.Body.(*ast.Var); ok {
-				varReference, err := p.FindVarReference(v)
-				if err != nil {
-					return nil, err
-				}
-				node = varReference
-				logrus.Errorf("####### %+v %v", varReference, reflect.TypeOf(varReference))
-			}
-		}
+		currentNode.Target = target
+	case *ast.Function:
+		compiledBody, err := p.CompileNode(currentNode.Body)
+		currentNode.Body = compiledBody
+		return currentNode, err
+
+	default:
+		logrus.Errorf("Not handling %v", reflect.TypeOf(currentNode))
+		return node, nil
 	}
 
-	//for _, child := range t.GetAllChildren() {
-	//	switch child := child.(type) {
-	//	case *ast.Var:
-	//		varReference, err := p.FindVarReference(child)
-	//		if err != nil {
-	//			return nil, err
-	//		}
-	//		logrus.Errorf("### Ref %v of type %v", varReference, reflect.TypeOf(varReference))
-	//	}
-	//	logrus.Errorf("Child %v of type %v", child, reflect.TypeOf(child))
-	//}
-
 	t = nodetree.BuildTree(nil, node)
-	logrus.Errorf("%s", t)
-	// TODO: find all dependencies
+	logrus.Errorf("POST\n%s", t)
 	evalResult, err := p.vm.Evaluate(node)
 	if err != nil {
 		return nil, fmt.Errorf("could not evaluate node: %w", err)
