@@ -12,6 +12,7 @@ import (
 )
 
 func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexList []string, partialMatchFields bool) ([]ObjectRange, error) {
+	log.Errorf("index %v", indexList)
 	var foundDesugaredObjects []*ast.DesugaredObject
 	// First element will be super, self, or var name
 	// TODO: would 1 be okay?
@@ -71,9 +72,14 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			}
 			return nil, fmt.Errorf("could not find bind for start %s", start)
 		}
+		log.Errorf("Node type %v", reflect.TypeOf(bind.Body))
 		switch bodyNode := bind.Body.(type) {
 		case *ast.DesugaredObject:
-			foundDesugaredObjects = append(foundDesugaredObjects, bodyNode)
+			//compiledNode, err := p.CompileNode(root, bodyNode)
+			//if err != nil {
+			//	return nil, fmt.Errorf("failed to compile object: %w", err)
+			//}
+			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode)...)
 		case *ast.Self:
 			tmpStack := nodestack.NewNodeStack(stack.From)
 			foundDesugaredObjects = p.FindTopLevelObjects(tmpStack)
@@ -87,6 +93,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 		case *ast.Apply:
 			tempStack := nodestack.NewNodeStack(bodyNode)
 			localIndexList := tempStack.Clone().BuildIndexList()
+			log.Errorf("APPLY####")
 			// TODO: this an ugly workaround for extVar and not breaking other stuff
 			// $std are internal calls (for example for loops)
 			if len(localIndexList) == 2 && ((localIndexList[0] == "std" && localIndexList[1] == "extVar") || localIndexList[0] == "$std") {
@@ -110,6 +117,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 		case *ast.Binary:
 			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Left)...)
 			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Right)...)
+
 		default:
 			return nil, fmt.Errorf("unexpected node type when finding bind for '%s': %s", start, reflect.TypeOf(bind.Body))
 		}

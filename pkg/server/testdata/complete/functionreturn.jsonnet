@@ -5,10 +5,30 @@ local conditional() =
 
 local conditionalStatic() = if true then { one: true } else { two: false };
 
-local conditionalObj() = {
+local conditionalFunc() = {
   one: 1,
   [if enablePath then 'two']: 2,
 };
+
+local conditionalObj =
+  {
+    one: 1,
+    [if enablePath then 'two']: 2,
+  };
+
+local forObj =
+  {
+    [x]: x
+    for x in ['one', 'two', 'three']
+  };
+
+local compoundObject =
+  {
+    one: 1,
+  } +
+  {
+    two: 2,
+  };
 
 local conditionalArg(arg, pathOne) =
   if pathOne then { one: arg } else { two: arg };
@@ -27,6 +47,9 @@ local selfObj = {
   conditionalArg(data, false).two,
   conditional().one,
   conditionalStatic().one,
-  conditionalObj().two,
+  conditionalObj.two,
   selfObj.objFunc().val,
+  conditionalObj,
+  compoundObject,
+  forObj.three,
 ]

@@ -42,6 +42,17 @@ func GetTopNodesOfType[T ast.Node](tree *NodeTree) []T {
 	return children
 }
 
+func GetNodesOfType[T ast.Node](tree *NodeTree) []T {
+	var children []T
+	if node, ok := tree.Node.(T); ok {
+		children = append(children, node)
+	}
+	for _, child := range tree.Children {
+		children = append(children, GetTopNodesOfType[T](child)...)
+	}
+	return children
+}
+
 func (t *NodeTree) GetDeepestNodes() []ast.Node {
 	var children []ast.Node
 	if len(t.Children) == 0 {
@@ -74,6 +85,13 @@ func (t *NodeTree) String() string {
 		output.WriteString(fmt.Sprintf(" %s", node.Value))
 	case *ast.Var:
 		output.WriteString(fmt.Sprintf(" %s", node.Id))
+	case *ast.Local:
+		output.WriteString(fmt.Sprintf(" num binds %d", len(node.Binds)))
+		for i, bind := range node.Binds {
+			output.WriteString(fmt.Sprintf(" bind %d is %v", i, reflect.TypeOf(bind.Body)))
+			output.WriteString(fmt.Sprintf(" fun is %v", bind.Fun))
+		}
+		output.WriteString(fmt.Sprintf(" body is %v", reflect.TypeOf(node.Body)))
 	}
 	output.WriteString("\n")
 	for _, child := range t.Children {
