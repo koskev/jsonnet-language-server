@@ -10,37 +10,32 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (p *Processor) CompileNode(node ast.Node) (ast.Node, error) {
-	t := nodetree.BuildTree(nil, node)
+func (p *Processor) CompileNode(root ast.Node, node ast.Node) (ast.Node, error) {
+	t := nodetree.BuildTree(nil, root)
 	logrus.Errorf("PRE\n%s", t)
 
 	switch currentNode := node.(type) {
-	case *ast.Var:
-		varReference, err := p.FindVarReference(currentNode)
-		if err != nil {
-			return nil, err
-		}
-		return p.CompileNode(varReference)
-
 	case *ast.Apply:
-		target, err := p.CompileNode(currentNode.Target)
+		// get node with stack
+		stack, err := FindNodeByPosition(root, currentNode.Loc().Begin)
 		if err != nil {
 			return nil, err
 		}
-		currentNode.Target = target
-	case *ast.Function:
-		compiledBody, err := p.CompileNode(currentNode.Body)
-		currentNode.Body = compiledBody
-		return currentNode, err
+		for !stack.IsEmpty() {
+			if localNode, ok := stack.Pop().(*ast.Local); ok {
+				localNode.Body = currentNode
+				break
+			}
+		}
 
 	default:
 		logrus.Errorf("Not handling %v", reflect.TypeOf(currentNode))
 		return node, nil
 	}
 
-	t = nodetree.BuildTree(nil, node)
+	t = nodetree.BuildTree(nil, root)
 	logrus.Errorf("POST\n%s", t)
-	evalResult, err := p.vm.Evaluate(node)
+	evalResult, err := p.vm.Evaluate(root)
 	if err != nil {
 		return nil, fmt.Errorf("could not evaluate node: %w", err)
 	}

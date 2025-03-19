@@ -54,6 +54,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 		}
 		// Get ast.DesugaredObject at variable definition by getting bind then setting ast.DesugaredObject
 		bind := FindBindByIDViaStack(stack, ast.Identifier(start))
+		log.Errorf("Top node %v bind %v", reflect.TypeOf(stack.Peek()), reflect.TypeOf(bind))
 		if bind == nil {
 			param := FindParameterByIDViaStack(stack, ast.Identifier(start), partialMatchFields)
 			if param != nil {
@@ -79,6 +80,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			//if err != nil {
 			//	return nil, fmt.Errorf("failed to compile object: %w", err)
 			//}
+			log.Errorf("desugar####")
 			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode)...)
 		case *ast.Self:
 			tmpStack := nodestack.NewNodeStack(stack.From)
@@ -87,6 +89,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			filename := bodyNode.File.Value
 			foundDesugaredObjects = p.FindTopLevelObjectsInFile(filename, "")
 		case *ast.Index:
+			log.Errorf("index####")
 			tempStack := nodestack.NewNodeStack(bodyNode)
 			indexList = append(tempStack.BuildIndexList(), indexList...)
 			return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
@@ -96,7 +99,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			log.Errorf("APPLY####")
 			// TODO: this an ugly workaround for extVar and not breaking other stuff
 			// $std are internal calls (for example for loops)
-			if len(localIndexList) == 2 && ((localIndexList[0] == "std" && localIndexList[1] == "extVar") || localIndexList[0] == "$std") {
+			if len(localIndexList) == 2 && ((localIndexList[0] == "std" && localIndexList[1] == "extVar") || localIndexList[0] == "$std") || true {
 				// The second call will error if this errors
 				evalResult, _ := p.vm.Evaluate(bodyNode)
 				node, err := jsonnet.SnippetToAST("", evalResult)
@@ -112,6 +115,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			indexList = append(tempStack.BuildIndexList(), indexList...)
 			return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
 		case *ast.Function:
+			log.Errorf("function#### %v", reflect.TypeOf(bodyNode.Body))
 			// If the function's body is an object, it means we can look for indexes within the function
 			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Body)...)
 		case *ast.Binary:

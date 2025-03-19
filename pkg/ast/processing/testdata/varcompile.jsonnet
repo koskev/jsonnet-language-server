@@ -1,6 +1,6 @@
 local pathOne = true;
-local var = { x: 'test' };  //if pathOne then { a: 'b' } else { b: 'second' };
-local func() = { a: 'a', b: 'hi' };
+local var = if pathOne then { a: 'first' } else { b: 'second' };
+local func() = { a: var, b: 'hi' };
 
 {
   res: func(),

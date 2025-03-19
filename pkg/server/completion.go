@@ -43,6 +43,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		log.Errorf("Completion: error computing node: %v", err)
 		return nil, nil
 	}
+	log.Errorf("top of stack %v", reflect.TypeOf(searchStack.Peek()))
 
 	vm := s.getVM(doc.Item.URI.SpanURI().Filename())
 
@@ -112,7 +113,7 @@ func (s *Server) completionFromStack(content string, line string, stack *nodesta
 }
 
 func (s *Server) completeLocal(indexes []string, vm *jsonnet.VM, line string, pos protocol.Position, stack *nodestack.NodeStack) []protocol.CompletionItem {
-	log.Tracef("##### Local path")
+	log.Errorf("##### Local path")
 
 	processor := processing.NewProcessor(s.cache, vm)
 	ranges, err := processor.FindRangesFromIndexList(stack, indexes, true)

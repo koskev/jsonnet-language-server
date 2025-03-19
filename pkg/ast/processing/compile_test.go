@@ -34,6 +34,6 @@ func TestCompile(t *testing.T) {
 
 	funcNode := tree.Children[1].Node
 	assert.Equal(t, reflect.TypeFor[*ast.Apply](), reflect.TypeOf(funcNode))
-	_, err = processor.CompileNode(funcNode)
+	_, err = processor.CompileNode(root, funcNode)
 	require.NoError(t, err)
 }
