@@ -76,6 +76,32 @@ func (s *NodeStack) BuildIndexList() []string {
 	return indexList
 }
 
+func (s *NodeStack) BuildIndexNodeList() []ast.Node {
+	var indexList []ast.Node
+	for !s.IsEmpty() {
+		curr := s.Pop()
+		switch curr := curr.(type) {
+		case *ast.Apply:
+			s.Push(curr.Target)
+		case *ast.SuperIndex:
+			s.Push(curr.Index)
+			indexList = append(indexList, curr)
+		case *ast.Index:
+			s.Push(curr.Index)
+			s.Push(curr.Target)
+		case *ast.LiteralString:
+			indexList = append(indexList, curr)
+		case *ast.Self:
+			indexList = append(indexList, curr)
+		case *ast.Var:
+			indexList = append(indexList, curr)
+		case *ast.Import:
+			indexList = append(indexList, curr)
+		}
+	}
+	return indexList
+}
+
 func (s *NodeStack) ReorderDesugaredObjects() *NodeStack {
 	sort.SliceStable(s.Stack, func(i, j int) bool {
 		_, iIsDesugared := s.Stack[i].(*ast.DesugaredObject)

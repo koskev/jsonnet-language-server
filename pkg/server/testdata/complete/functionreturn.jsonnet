@@ -30,26 +30,31 @@ local compoundObject =
     two: 2,
   };
 
-local conditionalArg(arg, pathOne) =
+local conditionalArgs(arg, pathOne) =
   if pathOne then { one: arg } else { two: arg };
+
+local conditionalArg(pathOne) =
+  if pathOne then { one: 'one' } else { two: 'two' };
 
 local data = {
   b: 'hello',
 };
 
 local selfObj = {
-  objFunc(): self,
+  objFunc():: self + { obj: 'object' },
   val: 'val',
 };
 
 [
-  conditionalArg(data, true).one,
-  conditionalArg(data, false).two,
-  conditional().one,
+  conditionalArgs(data, true).one,
+  conditionalArgs(data, false).two,
+  conditional(),
   conditionalStatic().one,
   conditionalObj.two,
   selfObj.objFunc().val,
   conditionalObj,
   compoundObject,
   forObj.three,
+  conditionalArg(false).two,
+  selfObj,
 ]

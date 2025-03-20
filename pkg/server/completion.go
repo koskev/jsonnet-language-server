@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-jsonnet/ast"
 	"github.com/google/go-jsonnet/formatter"
 	"github.com/grafana/jsonnet-language-server/pkg/ast/processing"
+	"github.com/grafana/jsonnet-language-server/pkg/cache"
 	"github.com/grafana/jsonnet-language-server/pkg/cst"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
@@ -43,8 +44,6 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		log.Errorf("Completion: error computing node: %v", err)
 		return nil, nil
 	}
-	log.Errorf("top of stack %v", reflect.TypeOf(searchStack.Peek()))
-
 	vm := s.getVM(doc.Item.URI.SpanURI().Filename())
 
 	// Inside parentheses, search for completions as if the content was on a separate line
@@ -59,7 +58,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		line = lastArg
 	}
 
-	items := s.completionFromStack(doc.Item.Text, line, searchStack, vm, params.Position)
+	items := s.completionFromStack(doc.Item.Text, line, searchStack, vm, params.Position, doc)
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 }
 
@@ -71,7 +70,7 @@ func getCompletionLine(fileContent string, position protocol.Position) string {
 	return line
 }
 
-func (s *Server) completionFromStack(content string, line string, stack *nodestack.NodeStack, vm *jsonnet.VM, pos protocol.Position) []protocol.CompletionItem {
+func (s *Server) completionFromStack(content string, line string, stack *nodestack.NodeStack, vm *jsonnet.VM, pos protocol.Position, doc *cache.Document) []protocol.CompletionItem {
 	// TODO: fix these:
 	// var .name
 	// var.\n name
@@ -83,6 +82,8 @@ func (s *Server) completionFromStack(content string, line string, stack *nodesta
 	lastWord = strings.TrimSpace(lastWord)
 
 	indexes := strings.Split(lastWord, ".")
+
+	// TODO: Prepare the content: Remove all whitespaces until the next valid token. Significantally reduces the CST special cases
 
 	root, err := cst.NewTree(context.TODO(), content)
 	if err != nil {
@@ -105,6 +106,23 @@ func (s *Server) completionFromStack(content string, line string, stack *nodesta
 			cst.NodeID,
 			cst.NodeFunctionCall,
 		}) {
+		// Get prev node to get value to compile and complete from
+		prevNode := cst.GetPrevNode(found)
+		astNode, err := processing.FindNodeByPosition(doc.AST, position.CSTToAST(prevNode.StartPosition()))
+		if err != nil {
+			log.Errorf("######## could not find ast node %v", err)
+		}
+		log.Errorf("Found ast node at %v with type %v", prevNode.StartPosition(), reflect.TypeOf(astNode))
+		processor := processing.NewProcessor(s.cache, vm)
+		compiled, err := processor.CompileNode(doc.AST, astNode.Peek())
+		if err != nil {
+			log.Errorf("##### Compile failed! %v", err)
+		}
+		log.Errorf("##### Compiled")
+		newStack := nodestack.NewNodeStack(compiled)
+		log.Errorf("NEW IDX: %v", newStack.BuildIndexList())
+
+		return s.getCompletionsForNode(compiled, processor)
 		return s.completeLocal(indexes, vm, line, pos, stack)
 	}
 
@@ -124,6 +142,22 @@ func (s *Server) completeLocal(indexes []string, vm *jsonnet.VM, line string, po
 
 	completionPrefix := strings.Join(indexes[:len(indexes)-1], ".")
 	return s.createCompletionItemsFromRanges(ranges, completionPrefix, line, pos)
+}
+
+func (s *Server) getCompletionsForNode(node ast.Node, processor *processing.Processor) []protocol.CompletionItem {
+	var completions []protocol.CompletionItem
+	switch node := node.(type) {
+	case *ast.DesugaredObject:
+		for _, field := range node.Fields {
+			if nameNode, ok := field.Name.(*ast.LiteralString); ok {
+				completions = append(completions, protocol.CompletionItem{
+					Label: nameNode.Value,
+				})
+			}
+		}
+	}
+
+	return completions
 }
 
 func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
