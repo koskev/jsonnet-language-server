@@ -122,6 +122,7 @@ func (s *Server) completionFromStack(content string, line string, stack *nodesta
 		newStack := nodestack.NewNodeStack(compiled)
 		log.Errorf("NEW IDX: %v", newStack.BuildIndexList())
 
+		// TODO: This can't work. The easy way is not possible due to hidden fields T_T
 		return s.getCompletionsForNode(compiled, processor)
 		return s.completeLocal(indexes, vm, line, pos, stack)
 	}

@@ -42,7 +42,15 @@ local data = {
 
 local selfObj = {
   objFunc():: self + { obj: 'object' },
-  val: 'val',
+  val:: 'val',
+};
+
+local impossibleComplete = {
+  [if enablePath then 'two']:: {
+    myFunc():: {
+      val: 'val',
+    },
+  },
 };
 
 [
@@ -56,5 +64,6 @@ local selfObj = {
   compoundObject,
   forObj.three,
   conditionalArg(false).two,
+  selfObj.objFunc(),
   selfObj,
 ]
