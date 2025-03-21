@@ -9,19 +9,25 @@ import (
 	sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
+// FUCK YOU GO AND YOUR STUPID ENUMS!
+type NodeType string
+
 const (
-	NodeSelf           = 6
-	NodeDollar         = 7
-	NodeDot            = 16
-	NodeColon          = 17
-	NodeClosingBracket = 19
-	NodeSemicolon      = 20
-	NodeFieldAccess    = 71
-	NodeFunctionCall   = 75
-	NodeID             = 76
-	NodeLocalBind      = 77
-	NodeBind           = 104
-	NodeError          = 65535
+	NodeSelf           = "self"
+	NodeDollar         = "dollar"
+	NodeDot            = "."
+	NodeColon          = ":"
+	NodeClosingBracket = ")"
+	NodeSemicolon      = ";"
+	NodeFieldAccess    = "fieldaccess"
+	NodeFunctionCall   = "functioncall"
+	NodeID             = "id"
+	NodeLocalBind      = "local_bind"
+	NodeLocal          = "local"
+	NodeParenthesis    = "parenthesis"
+	NodeBind           = "bind"
+	NodeImport         = "import"
+	NodeError          = "ERROR"
 )
 
 func NewTree(ctx context.Context, content string) (*sitter.Node, error) {
@@ -57,7 +63,7 @@ func GetNodeAtPos(root *sitter.Node, point sitter.Point) *sitter.Node {
 }
 
 func IsSymbolNode(node *sitter.Node) bool {
-	switch node.GrammarId() {
+	switch node.GrammarName() {
 	case NodeSemicolon, NodeDot, NodeClosingBracket, NodeColon:
 		return true
 	}
@@ -71,7 +77,7 @@ func GetNonSymbolNode(node *sitter.Node) *sitter.Node {
 	return node
 }
 
-func IsNodeAny(node *sitter.Node, nodeTypes []uint16) bool {
+func IsNodeAny(node *sitter.Node, nodeTypes []NodeType) bool {
 	for _, nodeType := range nodeTypes {
 		if IsNode(node, nodeType) {
 			return true
@@ -80,8 +86,9 @@ func IsNodeAny(node *sitter.Node, nodeTypes []uint16) bool {
 	return false
 }
 
-func IsNode(node *sitter.Node, nodeType uint16) bool {
-	return node != nil && node.GrammarId() == nodeType
+func IsNode(node *sitter.Node, nodeType NodeType) bool {
+	// Casting is needed since go is just stupid with "enums"....
+	return node != nil && node.GrammarName() == string(nodeType)
 }
 
 // Gets the previous node in the tree
@@ -91,6 +98,16 @@ func GetPrevNode(node *sitter.Node) *sitter.Node {
 	}
 	// TODO: If node is document we are at the last line and should get the last child in the tree (bottom in neovim)
 	return node.Parent()
+}
+
+func GetPrevNodeType(node *sitter.Node, nodeType NodeType) *sitter.Node {
+	// TODO: is there really no while((retNode := GetPrevNode(node) != nil) in go?!?
+	for retNode := GetPrevNode(node); retNode != nil; retNode = GetPrevNode(node) {
+		if node != nil && retNode.GrammarName() == string(nodeType) {
+			return retNode
+		}
+	}
+	return nil
 }
 
 func GetLastChild(node *sitter.Node) *sitter.Node {
@@ -105,4 +122,24 @@ func GetNodeString(node *sitter.Node) string {
 		return fmt.Sprintf("%s (%d)", node.GrammarName(), node.GrammarId())
 	}
 	return "nil"
+}
+
+func GetFirstChildType(node *sitter.Node, nodeType NodeType) (*sitter.Node, error) {
+	if node == nil {
+		return nil, fmt.Errorf("node is nil")
+	}
+	cursor := node.Walk()
+	children := node.Children(cursor)
+	for _, child := range children {
+		if child.GrammarName() == string(nodeType) {
+			return &child, nil
+		}
+	}
+	for _, child := range children {
+		ret, err := GetFirstChildType(&child, nodeType)
+		if err == nil {
+			return ret, nil
+		}
+	}
+	return nil, fmt.Errorf("unable to find child for type %s", nodeType)
 }

@@ -106,10 +106,10 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)
 		case *ast.Function:
 			// If the function's body is an object, it means we can look for indexes within the function
-			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Body)...)
+			foundDesugaredObjects = append(foundDesugaredObjects, p.FindChildDesugaredObjects(bodyNode.Body)...)
 		case *ast.Binary:
-			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Left)...)
-			foundDesugaredObjects = append(foundDesugaredObjects, p.findChildDesugaredObjects(bodyNode.Right)...)
+			foundDesugaredObjects = append(foundDesugaredObjects, p.FindChildDesugaredObjects(bodyNode.Left)...)
+			foundDesugaredObjects = append(foundDesugaredObjects, p.FindChildDesugaredObjects(bodyNode.Right)...)
 		default:
 			return nil, fmt.Errorf("unexpected node type when finding bind for '%s': %s", start, reflect.TypeOf(bind.Body))
 		}
@@ -124,7 +124,7 @@ func (p *Processor) extractObjectRangesFromDesugaredObjs(desugaredObjs []*ast.De
 		index := indexList[0]
 		indexList = indexList[1:]
 		partialMatchCurrentField := partialMatchFields && len(indexList) == 0 // Only partial match on the last index. Others are considered complete
-		foundFields := findObjectFieldsInObjects(desugaredObjs, index, partialMatchCurrentField)
+		foundFields := FindObjectFieldsInObjects(desugaredObjs, index, partialMatchCurrentField)
 		desugaredObjs = nil
 		if len(foundFields) == 0 {
 			return nil, fmt.Errorf("field %s was not found in ast.DesugaredObject", index)
@@ -148,7 +148,7 @@ func (p *Processor) extractObjectRangesFromDesugaredObjs(desugaredObjs []*ast.De
 			fieldNode := fieldNodes[i]
 			switch fieldNode := fieldNode.(type) {
 			default:
-				desugaredObjs = append(desugaredObjs, p.findChildDesugaredObjects(fieldNode)...)
+				desugaredObjs = append(desugaredObjs, p.FindChildDesugaredObjects(fieldNode)...)
 			case *ast.Apply:
 				// Add the target of the Apply to the list of field nodes to look for
 				// The target is a function and will be found by FindVarReference on the next loop
@@ -160,7 +160,7 @@ func (p *Processor) extractObjectRangesFromDesugaredObjs(desugaredObjs []*ast.De
 				}
 				// If the reference is an object, add it directly to the list of objects to look in
 				// Otherwise, add it back to the list for further processing
-				if varReferenceObjs := p.findChildDesugaredObjects(varReference); len(varReferenceObjs) > 0 {
+				if varReferenceObjs := p.FindChildDesugaredObjects(varReference); len(varReferenceObjs) > 0 {
 					desugaredObjs = append(desugaredObjs, varReferenceObjs...)
 				} else {
 					fieldNodes = append(fieldNodes, varReference)
@@ -225,16 +225,16 @@ func (p *Processor) unpackFieldNodes(fields []*ast.DesugaredObjectField) []ast.N
 	return fieldNodes
 }
 
-func findObjectFieldsInObjects(objectNodes []*ast.DesugaredObject, index string, partialMatchFields bool) []*ast.DesugaredObjectField {
+func FindObjectFieldsInObjects(objectNodes []*ast.DesugaredObject, index string, partialMatchFields bool) []*ast.DesugaredObjectField {
 	var matchingFields []*ast.DesugaredObjectField
 	for _, object := range objectNodes {
-		fields := findObjectFieldsInObject(object, index, partialMatchFields)
+		fields := FindObjectFieldsInObject(object, index, partialMatchFields)
 		matchingFields = append(matchingFields, fields...)
 	}
 	return matchingFields
 }
 
-func findObjectFieldsInObject(objectNode *ast.DesugaredObject, index string, partialMatchFields bool) []*ast.DesugaredObjectField {
+func FindObjectFieldsInObject(objectNode *ast.DesugaredObject, index string, partialMatchFields bool) []*ast.DesugaredObjectField {
 	if objectNode == nil {
 		return nil
 	}
@@ -256,14 +256,14 @@ func findObjectFieldsInObject(objectNode *ast.DesugaredObject, index string, par
 	return matchingFields
 }
 
-func (p *Processor) findChildDesugaredObjects(node ast.Node) []*ast.DesugaredObject {
+func (p *Processor) FindChildDesugaredObjects(node ast.Node) []*ast.DesugaredObject {
 	switch node := node.(type) {
 	case *ast.DesugaredObject:
 		return []*ast.DesugaredObject{node}
 	case *ast.Binary:
 		var res []*ast.DesugaredObject
-		res = append(res, p.findChildDesugaredObjects(node.Left)...)
-		res = append(res, p.findChildDesugaredObjects(node.Right)...)
+		res = append(res, p.FindChildDesugaredObjects(node.Left)...)
+		res = append(res, p.FindChildDesugaredObjects(node.Right)...)
 		return res
 	}
 	return nil
@@ -296,7 +296,7 @@ func (p *Processor) findLHSDesugaredObject(stack *nodestack.NodeStack) (*ast.Des
 			case *ast.Var:
 				bind := FindBindByIDViaStack(stack, lhsNode.Id)
 				if bind != nil {
-					if binds := p.findChildDesugaredObjects(bind.Body); len(binds) > 0 {
+					if binds := p.FindChildDesugaredObjects(bind.Body); len(binds) > 0 {
 						return binds[0], nil
 					}
 				}

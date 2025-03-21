@@ -22,12 +22,12 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func (s *Server) getAst(fileName string) (*jsonnet.VM, ast.Node, error) {
+func (s *Server) getAst(fileName string, from string) (*jsonnet.VM, ast.Node, error) {
 	vm := s.getVM(fileName)
 	doc, err := s.cache.Get(protocol.DocumentURI(fileName))
 	var root ast.Node
 	if err != nil {
-		root, _, err = vm.ImportAST("", fileName)
+		root, _, err = vm.ImportAST(from, fileName)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -149,7 +149,7 @@ func (s *Server) References(_ context.Context, params *protocol.ReferenceParams)
 }
 
 func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.Position, includeSelf bool) ([]protocol.Location, error) {
-	vm, root, err := s.getAst(sourceURI.SpanURI().Filename())
+	vm, root, err := s.getAst(sourceURI.SpanURI().Filename(), "")
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,7 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 			// No matches
 			continue
 		}
-		vm, root, err := s.getAst(fileName)
+		vm, root, err := s.getAst(fileName, "")
 		if err != nil {
 			return nil, fmt.Errorf("getting ast for %s: %w", fileName, err)
 		}

@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 
@@ -54,6 +56,10 @@ type Server struct {
 	diagRunning sync.Map
 }
 
+func (s *Server) GetCache() *cache.Cache {
+	return s.cache
+}
+
 func (s *Server) getVM(path string) *jsonnet.VM {
 	var vm *jsonnet.VM
 	if s.configuration.ResolvePathsWithTanka {
@@ -86,10 +92,13 @@ func (s *Server) DidChange(_ context.Context, params *protocol.DidChangeTextDocu
 
 	if params.TextDocument.Version > doc.Item.Version && len(params.ContentChanges) != 0 {
 		oldText := doc.Item.Text
+		// TODO: this is not LSP compatible. A change event might be limited by the range
 		doc.Item.Text = params.ContentChanges[len(params.ContentChanges)-1].Text
+		log.Errorf("CHANGES %+v", params)
 
 		var ast ast.Node
-		ast, doc.Err = jsonnet.SnippetToAST(doc.Item.URI.SpanURI().Filename(), doc.Item.Text)
+		// Since go is stupid we are unable to get the internal error type and thus cannot get the error location. Nice one!
+		ast, doc.Err = s.getFixedAst(doc.Item.URI.SpanURI().Filename(), doc.Item.Text, oldText)
 
 		// If the AST parsed correctly, set it on the document
 		// Otherwise, keep the old AST, and find all the lines that have changed since last AST
@@ -108,6 +117,60 @@ func (s *Server) DidChange(_ context.Context, params *protocol.DidChangeTextDocu
 	}
 
 	return s.cache.Put(doc)
+}
+
+func getDiffPosition(newText string, oldText string) int {
+	for i, _ := range newText {
+		if i > len(oldText) {
+			return i
+		}
+		if newText[i] != oldText[i] {
+			return i
+		}
+	}
+	return 0
+}
+
+func (s *Server) getFixedAst(filename string, newText string, oldText string) (ast.Node, error) {
+	// TODO: use the cst?
+	// Try new text without modification
+	ast, err := jsonnet.SnippetToAST(filename, newText)
+	if err == nil {
+		return ast, nil
+	}
+	// TODO: make proper diff
+	diffLocation := getDiffPosition(newText, oldText)
+	lineEndingLocation := strings.Index(newText[diffLocation:], "\n") + diffLocation
+	removeEndings := []rune{'.', ',', ')'}
+	addEndings := []string{";", "),", ",", ")"}
+
+	// First remover all endings
+	for {
+		if !slices.Contains(removeEndings, rune(newText[lineEndingLocation-1])) {
+			break
+		}
+		newText = newText[:lineEndingLocation-1] + newText[lineEndingLocation:]
+		lineEndingLocation = lineEndingLocation - 1
+	}
+	// Try to fix ast with all suffixes removed
+	ast, err = jsonnet.SnippetToAST(filename, newText)
+	if err == nil {
+		return ast, nil
+	}
+
+	// Then add fixed endings
+	for _, ending := range addEndings {
+		// Ensure the line ends with ending
+		testText := newText[:lineEndingLocation] + ending + newText[lineEndingLocation:]
+		ast, err := jsonnet.SnippetToAST(filename, testText)
+		if err == nil {
+			log.Errorf("Fixed ast with %v", ending)
+			return ast, nil
+		}
+	}
+
+	log.Errorf("Unable to fix ast!")
+	return nil, fmt.Errorf("unable to fix ast")
 }
 
 func (s *Server) DidOpen(_ context.Context, params *protocol.DidOpenTextDocumentParams) (err error) {

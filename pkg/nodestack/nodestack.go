@@ -1,9 +1,12 @@
 package nodestack
 
 import (
+	"fmt"
+	"reflect"
 	"sort"
 
 	"github.com/google/go-jsonnet/ast"
+	"github.com/sirupsen/logrus"
 )
 
 type NodeStack struct {
@@ -39,6 +42,16 @@ func (s *NodeStack) Pop() ast.Node {
 	return n
 }
 
+func (s *NodeStack) PopFront() ast.Node {
+	l := len(s.Stack)
+	if l == 0 {
+		return nil
+	}
+	n := s.Stack[0]
+	s.Stack = s.Stack[1:]
+	return n
+}
+
 func (s *NodeStack) Peek() ast.Node {
 	if len(s.Stack) == 0 {
 		return nil
@@ -46,8 +59,29 @@ func (s *NodeStack) Peek() ast.Node {
 	return s.Stack[len(s.Stack)-1]
 }
 
+func (s *NodeStack) PeekFront() ast.Node {
+	if len(s.Stack) == 0 {
+		return nil
+	}
+	return s.Stack[0]
+}
+
 func (s *NodeStack) IsEmpty() bool {
 	return len(s.Stack) == 0
+}
+
+func (s *NodeStack) FindNext(nodeType reflect.Type) (ast.Node, error) {
+	// RLY GO? No proper iterators!?
+	for i := range s.Stack {
+		logrus.Errorf("Type %v", reflect.TypeOf(s.Stack[i]))
+		// Stupid reverse index due to go being an incomplete language
+		i = len(s.Stack) - 1 - i
+		if reflect.TypeOf(s.Stack[i]) == nodeType {
+			return s.Stack[i], nil
+		}
+	}
+	// GIVE AN OPTION TYPE!
+	return nil, fmt.Errorf("no node found")
 }
 
 func (s *NodeStack) BuildIndexList() []string {
