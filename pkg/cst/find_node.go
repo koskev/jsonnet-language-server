@@ -21,7 +21,7 @@ type CompletionNodeInfo struct {
 
 func getCurrentIndex(content string, pos protocol.Position) string {
 	whitespace := []rune{' ', '\n', '\t'}
-	endingTokens := []rune{':', ',', ';', '(', '='}
+	endingTokens := []rune{':', ',', ';', '(', '=', '['}
 
 	currentPos := 0
 	// FUCK YOU GO AND YOUR NON EXISTING FEATURES T_T
