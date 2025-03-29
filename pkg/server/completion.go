@@ -204,6 +204,29 @@ stackLoop:
 	return searchstack
 }
 
+func getVarIndexApply(documentstack *nodestack.NodeStack) ast.Node {
+	documentstack = documentstack.Clone()
+	prevNode := documentstack.Pop()
+	_, ok := prevNode.(*ast.Var)
+	if !ok {
+		return prevNode
+	}
+
+stackLoop:
+	for !documentstack.IsEmpty() {
+		switch currentNode := documentstack.Pop().(type) {
+		case *ast.Index:
+			prevNode = currentNode
+		case *ast.Apply:
+			prevNode = currentNode
+		default:
+			break stackLoop
+		}
+	}
+	return prevNode
+
+}
+
 func buildCallStack(node ast.Node) *nodestack.NodeStack {
 	nodesToSearch := nodestack.NewNodeStack(node)
 	callStack := &nodestack.NodeStack{}
@@ -384,12 +407,8 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 // get desurgared object for each step
 // does only act on complete indices. The current typing index is handled one layer above
 func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.DesugaredObject {
-	// TODO: this takes only completed indices. The current index has to be handled elsewhere
-	tempstack := documentstack.Clone()
-	for !tempstack.IsEmpty() {
-		log.Errorf("DOC %v", reflect.TypeOf(tempstack.Pop()))
-	}
-	callstack := buildCallStack(documentstack.Peek())
+	node := getVarIndexApply(documentstack)
+	callstack := buildCallStack(node)
 
 	log.Errorf("Callstack %+v", callstack)
 	// First object is var or func -> resolve to desugared object (including their keys)
@@ -462,16 +481,6 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		}
 	}
 
-	if len(searchstack.Stack) > 1 {
-		log.Errorf("Next next type %v", reflect.TypeOf(searchstack.Stack[len(searchstack.Stack)-2]))
-		if _, ok := searchstack.Stack[len(searchstack.Stack)-1].(*ast.Var); ok {
-			if _, ok := searchstack.Stack[len(searchstack.Stack)-2].(*ast.Apply); ok {
-				// xy.myFunc() resolves to index to the var myFunc and not apply. Therefore we need the parent node
-				searchstack.Pop()
-				// searchstack.Push(parentApply)
-			}
-		}
-	}
 	log.Errorf("Searching completion for %v at %v", reflect.TypeOf(searchstack.Peek()), pos)
 	object := s.buildDesugaredObject(searchstack)
 	if object == nil {
