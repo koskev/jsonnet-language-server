@@ -76,6 +76,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		//	}
 		//}
 		// TODO: injecting is still broken. From deleting index -> works. Adding . -> does not work
+		//node := getVarIndexApply(searchStack)
 		searchStack.PrintStack()
 		searchStack.Push(&ast.Index{
 			Target: searchStack.Peek(),
@@ -98,9 +99,11 @@ func DesugaredObjectFieldsToString(node *ast.DesugaredObject) string {
 		return "nil"
 	}
 	for _, field := range node.Fields {
-		builder.WriteString(fmt.Sprintf("Name: %v Value: %+v\n", field.Name, field.Body))
-		if child, ok := field.Body.(*ast.DesugaredObject); ok {
-			builder.WriteString(DesugaredObjectFieldsToString(child))
+		if fieldName, ok := field.Name.(*ast.LiteralString); ok {
+			builder.WriteString(fmt.Sprintf("Name: %v type: %+v\n", fieldName.Value, reflect.TypeOf(field.Body)))
+			if child, ok := field.Body.(*ast.DesugaredObject); ok {
+				builder.WriteString(DesugaredObjectFieldsToString(child))
+			}
 		}
 	}
 	return builder.String()
@@ -133,7 +136,11 @@ stackLoop:
 	for !searchstack.IsEmpty() {
 		log.Errorf("Node type %v", reflect.TypeOf(searchstack.Peek()))
 		switch currentNode := searchstack.Pop().(type) {
+		default:
+			log.Errorf("UNHANDLED IN RESOLVE %v", reflect.TypeOf(currentNode))
+
 		case *ast.Index:
+			log.Errorf("INDEX TARGET %v", reflect.TypeOf(currentNode.Target))
 			searchstack.Push(currentNode.Target)
 		case *ast.Function:
 			funcNode = currentNode
@@ -158,6 +165,7 @@ stackLoop:
 				}
 				log.Errorf("Failed to compile node %v", err)
 			}
+			log.Errorf("FUNC TARGET %v", reflect.TypeOf(currentNode.Target))
 			searchstack.Push(currentNode.Target)
 			applyNode = currentNode
 		case *ast.Var:
@@ -207,6 +215,7 @@ stackLoop:
 func getVarIndexApply(documentstack *nodestack.NodeStack) ast.Node {
 	documentstack = documentstack.Clone()
 	prevNode := documentstack.Pop()
+	log.Errorf("varIndex %v", reflect.TypeOf(prevNode))
 	_, ok := prevNode.(*ast.Var)
 	if !ok {
 		return prevNode
@@ -214,6 +223,7 @@ func getVarIndexApply(documentstack *nodestack.NodeStack) ast.Node {
 
 stackLoop:
 	for !documentstack.IsEmpty() {
+		log.Errorf("GET NODE %v", reflect.TypeOf(documentstack.Peek()))
 		switch currentNode := documentstack.Pop().(type) {
 		case *ast.Index:
 			prevNode = currentNode
@@ -227,16 +237,32 @@ stackLoop:
 
 }
 
-func buildCallStack(node ast.Node) *nodestack.NodeStack {
+func (s *Server) buildCallStack(node ast.Node, documentstack *nodestack.NodeStack) *nodestack.NodeStack {
 	nodesToSearch := nodestack.NewNodeStack(node)
 	callStack := &nodestack.NodeStack{}
 	log.Errorf("Building call stack from %v", reflect.TypeOf(node))
 
 	for !nodesToSearch.IsEmpty() {
 		currentNode := nodesToSearch.Pop()
+		log.Errorf("CALL BUILD %v", reflect.TypeOf(currentNode))
 		switch currentNode := currentNode.(type) {
 		case *ast.Index:
-			callStack.Push(currentNode)
+			log.Errorf("INDEX TARGET %v", reflect.TypeOf(currentNode.Target))
+			swapNode := false
+			if prevApply, ok := callStack.Peek().(*ast.Apply); ok {
+				if prevApply.Target == currentNode {
+					// If the apply is the current target, we need to swap the order. This way the apply binds get added before the index for the function
+					log.Errorf("REMOVING PREV with target %v", reflect.TypeOf(currentNode.Target))
+					swapNode = false
+				}
+			}
+			if swapNode {
+				tmp := callStack.Pop()
+				callStack.Push(currentNode)
+				callStack.Push(tmp)
+			} else {
+				callStack.Push(currentNode)
+			}
 			nodesToSearch.Push(currentNode.Target)
 			log.Errorf("New target %v %v", reflect.TypeOf(currentNode.Target), currentNode.Index)
 		case *ast.Var:
@@ -246,6 +272,8 @@ func buildCallStack(node ast.Node) *nodestack.NodeStack {
 			}
 			// Inside a function call the stack also contains the function. If we see a var we can abort as a var always marks the end of a "call"
 		case *ast.Apply:
+			// If callstack top is an index to the same node we'll delete it
+			log.Errorf("TARGET %v", reflect.TypeOf(currentNode.Target))
 			callStack.Push(currentNode)
 			nodesToSearch.Push(currentNode.Target)
 		default:
@@ -380,8 +408,8 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			applystack := s.ResolveApplyArguments(searchstack, documentstack)
 			if applystack != nil {
 				searchstack = applystack
+				log.Errorf("New search stack %v", searchstack)
 			}
-			log.Errorf("New search stack %v", searchstack)
 		case *ast.Dollar:
 			myStack := documentstack.Clone()
 			for !myStack.IsEmpty() {
@@ -408,7 +436,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 // does only act on complete indices. The current typing index is handled one layer above
 func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.DesugaredObject {
 	node := getVarIndexApply(documentstack)
-	callstack := buildCallStack(node)
+	callstack := s.buildCallStack(node, documentstack)
 
 	log.Errorf("Callstack %+v", callstack)
 	// First object is var or func -> resolve to desugared object (including their keys)
@@ -421,6 +449,23 @@ stackLoop:
 		log.Errorf("Looking at call %v", reflect.TypeOf(callNode))
 		// nolint: gocritic // I might need more cases here
 		switch callNode := callNode.(type) {
+		// Resolve arguments and push them to the stack
+		case *ast.Apply:
+			log.Errorf("UNHANDLED APPLY!")
+			resolvestack := nodestack.NewNodeStack(callNode)
+			log.Errorf("APPLY TARGET %v", reflect.TypeOf(callstack.Peek()))
+			newStack := s.ResolveApplyArguments(resolvestack, documentstack)
+			if newStack == nil {
+				log.Errorf("Resolving failed")
+				return nil
+			}
+			newObject := s.getDesugaredObject(newStack, documentstack)
+			if newObject == nil {
+				log.Errorf("Desugar failed")
+				return nil
+			}
+			log.Errorf("After apply: %s", DesugaredObjectFieldsToString(newObject))
+			baseObject = newObject
 		// Search the current DesugaredObject and get the body for this index
 		case *ast.Index:
 			// TODO: special case if apply
@@ -444,8 +489,8 @@ stackLoop:
 					log.Errorf("Field does not have a name!")
 					continue
 				}
-				// TODO: this breaks completion with foo and foobar as members
 				if indexName.Value == fieldName.Value {
+					// TODO: member body might have function -> Bind stuff to stack
 					log.Errorf("Found field %s", indexName.Value)
 					newDesugar := s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
 					if newDesugar != nil {
@@ -480,6 +525,12 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 			}
 		}
 	}
+	//tempstack := searchstack.Clone()
+	//for !tempstack.IsEmpty() {
+	//	log.Errorf("TREE FOR: %v", reflect.TypeOf(tempstack.Peek()))
+	//	t := nodetree.BuildTree(nil, tempstack.Pop())
+	//	log.Errorf("%s", t)
+	//}
 
 	log.Errorf("Searching completion for %v at %v", reflect.TypeOf(searchstack.Peek()), pos)
 	object := s.buildDesugaredObject(searchstack)

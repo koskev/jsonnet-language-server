@@ -74,6 +74,10 @@ func (t *NodeTree) String() string {
 		output.WriteString(fmt.Sprintf(" %s", node.Value))
 	case *ast.Var:
 		output.WriteString(fmt.Sprintf(" %s", node.Id))
+	case *ast.Index:
+		if nameNode, ok := node.Index.(*ast.LiteralString); ok {
+			output.WriteString(fmt.Sprintf(" %s", nameNode.Value))
+		}
 	}
 	output.WriteString("\n")
 	for _, child := range t.Children {
