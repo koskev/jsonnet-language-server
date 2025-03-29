@@ -127,3 +127,10 @@ func (s *NodeStack) ReorderDesugaredObjects() *NodeStack {
 	})
 	return s
 }
+
+func (s *NodeStack) PrintStack() {
+	tempstack := s.Clone()
+	for !tempstack.IsEmpty() {
+		logrus.Errorf("Stack: %v", reflect.TypeOf(tempstack.Pop()))
+	}
+}

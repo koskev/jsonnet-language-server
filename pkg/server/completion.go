@@ -68,7 +68,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 	if info.InjectIndex {
 		log.Errorf("## Injecting index with target %v", reflect.TypeOf(searchStack.Peek()))
 		// TODO: this breaks function arguments
-		// if len(searchStack.Stack) > 1 {
+		//if len(searchStack.Stack) > 1 {
 		//	log.Errorf("Next next type %v", reflect.TypeOf(searchStack.Stack[len(searchStack.Stack)-2]))
 		//	if _, ok := searchStack.Stack[len(searchStack.Stack)-2].(*ast.Apply); ok {
 		//		// xy.myFunc() resolves to index to the var myFunc and not apply. Therefore we need the parent node
@@ -76,6 +76,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		//	}
 		//}
 		// TODO: injecting is still broken. From deleting index -> works. Adding . -> does not work
+		searchStack.PrintStack()
 		searchStack.Push(&ast.Index{
 			Target: searchStack.Peek(),
 			Index:  &ast.LiteralString{Value: ""},
@@ -206,6 +207,7 @@ stackLoop:
 func buildCallStack(node ast.Node) *nodestack.NodeStack {
 	nodesToSearch := nodestack.NewNodeStack(node)
 	callStack := &nodestack.NodeStack{}
+	log.Errorf("Building call stack from %v", reflect.TypeOf(node))
 
 	for !nodesToSearch.IsEmpty() {
 		currentNode := nodesToSearch.Pop()
@@ -274,6 +276,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 	log.Errorf("getDesugaredObject start: %+v", reflect.TypeOf(searchstack.Peek()))
 	// TODO: multiple objects -> merge or return multiple
 	for !searchstack.IsEmpty() {
+		documentstack.Push(searchstack.Peek())
 		log.Errorf("Getting desugared object for %v", reflect.TypeOf(searchstack.Peek()))
 		switch currentNode := searchstack.Pop().(type) {
 		case *ast.Var:
@@ -301,6 +304,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 		case *ast.Self:
 			// Search for next DesugaredObject
 			for !documentstack.IsEmpty() {
+				log.Errorf("DOC SELF %v", reflect.TypeOf(documentstack.Peek()))
 				if desugared, ok := documentstack.Pop().(*ast.DesugaredObject); ok {
 					log.Errorf("Next in stack: %v", reflect.TypeOf(documentstack.Peek()))
 					if bin, ok := documentstack.Pop().(*ast.Binary); ok {
@@ -341,7 +345,6 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 		case *ast.Index:
 
 			log.Errorf("Index with name %v", currentNode.Index)
-			documentstack.Push(currentNode)
 			obj := s.buildDesugaredObject(documentstack)
 			searchstack.Push(obj)
 
@@ -349,8 +352,12 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			searchstack.Push(currentNode.Left)
 			searchstack.Push(currentNode.Right)
 		case *ast.Apply:
+			// TODO: this is somehow needed
 			searchstack.Push(currentNode)
-			searchstack = s.ResolveApplyArguments(searchstack, documentstack)
+			applystack := s.ResolveApplyArguments(searchstack, documentstack)
+			if applystack != nil {
+				searchstack = applystack
+			}
 			log.Errorf("New search stack %v", searchstack)
 		case *ast.Dollar:
 			myStack := documentstack.Clone()
@@ -378,6 +385,10 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 // does only act on complete indices. The current typing index is handled one layer above
 func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.DesugaredObject {
 	// TODO: this takes only completed indices. The current index has to be handled elsewhere
+	tempstack := documentstack.Clone()
+	for !tempstack.IsEmpty() {
+		log.Errorf("DOC %v", reflect.TypeOf(tempstack.Pop()))
+	}
 	callstack := buildCallStack(documentstack.Peek())
 
 	log.Errorf("Callstack %+v", callstack)
