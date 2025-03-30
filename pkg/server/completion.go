@@ -3,7 +3,9 @@ package server
 import (
 	"context"
 	"fmt"
+	"maps"
 	"reflect"
+	"sort"
 	"strings"
 
 	"github.com/google/go-jsonnet"
@@ -89,6 +91,18 @@ func DesugaredObjectFieldsToString(node *ast.DesugaredObject) string {
 	return builder.String()
 }
 
+func getObjectFieldMap(object *ast.DesugaredObject) map[string]ast.DesugaredObjectField {
+	fieldMap := map[string]ast.DesugaredObjectField{}
+	for _, newField := range object.Fields {
+		if nameNode, ok := newField.Name.(*ast.LiteralString); ok {
+			fieldMap[nameNode.Value] = newField
+		}
+	}
+	return fieldMap
+}
+
+// Merges all desugared Objects into one
+// TODO: does not support + at the moment
 func mergeDesugaredObjects(objects []*ast.DesugaredObject) *ast.DesugaredObject {
 	if len(objects) == 0 {
 		return nil
@@ -98,9 +112,19 @@ func mergeDesugaredObjects(objects []*ast.DesugaredObject) *ast.DesugaredObject 
 	for len(objects) != 0 {
 		var object *ast.DesugaredObject
 		object, objects = objects[0], objects[1:]
-		// TODO: proper overrides
 		newObject.Asserts = append(newObject.Asserts, object.Asserts...)
 		newObject.Fields = append(newObject.Fields, object.Fields...)
+		newFields := getObjectFieldMap(&newObject)
+		currentFields := getObjectFieldMap(object)
+		maps.Copy(newFields, currentFields)
+		// FUCK YOU GO AND YOUR STUPID FAKE ITERATORS! There is no way this isn't a feature. I have to miss something...
+		// This is the long version of a simple "map" call...
+		vals := make([]ast.DesugaredObjectField, 0, len(newFields))
+		for _, v := range newFields {
+			vals = append(vals, v)
+		}
+		newObject.Fields = vals
+
 		newObject.Locals = append(newObject.Locals, object.Locals...)
 	}
 	return &newObject
@@ -218,7 +242,6 @@ stackLoop:
 		}
 	}
 	return prevNode
-
 }
 
 func (s *Server) buildCallStack(node ast.Node, documentstack *nodestack.NodeStack) *nodestack.NodeStack {
@@ -384,8 +407,8 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			searchstack.Push(obj)
 
 		case *ast.Binary:
-			searchstack.Push(currentNode.Left)
 			searchstack.Push(currentNode.Right)
+			searchstack.Push(currentNode.Left)
 		case *ast.Apply:
 			// TODO: this is somehow needed
 			searchstack.Push(currentNode)
@@ -512,7 +535,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 			}
 		}
 	}
-	//tempstack := searchstack.Clone()
+	// tempstack := searchstack.Clone()
 	//for !tempstack.IsEmpty() {
 	//	log.Errorf("TREE FOR: %v", reflect.TypeOf(tempstack.Peek()))
 	//	t := nodetree.BuildTree(nil, tempstack.Pop())
@@ -525,6 +548,13 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		return items
 	}
 
+	// Sort by name
+	sort.SliceStable(object.Fields, func(i, j int) bool {
+		iName, iok := object.Fields[i].Name.(*ast.LiteralString)
+		jName, jok := object.Fields[j].Name.(*ast.LiteralString)
+
+		return iok && jok && iName.Value < jName.Value
+	})
 	for _, field := range object.Fields {
 		if nameNode, ok := field.Name.(*ast.LiteralString); ok {
 			if strings.HasPrefix(nameNode.Value, indexName) {

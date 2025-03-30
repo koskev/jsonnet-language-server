@@ -365,21 +365,20 @@ func TestCompletion(t *testing.T) {
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
-					// TODO: order?
-					{
-						Label:      "attribute2",
-						Kind:       protocol.FieldCompletion,
-						Detail:     "$.attribute2",
-						InsertText: "attribute2",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "object",
-						},
-					},
 					{
 						Label:      "attribute",
 						Kind:       protocol.FieldCompletion,
 						Detail:     "$.attribute",
 						InsertText: "attribute",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+					{
+						Label:      "attribute2",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "$.attribute2",
+						InsertText: "attribute2",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
@@ -396,21 +395,20 @@ func TestCompletion(t *testing.T) {
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
-					// TODO: order?
-					{
-						Label:      "attribute2",
-						Kind:       protocol.FieldCompletion,
-						Detail:     "$.attribute2",
-						InsertText: "attribute2",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "object",
-						},
-					},
 					{
 						Label:      "attribute",
 						Kind:       protocol.FieldCompletion,
 						Detail:     "$.attribute",
 						InsertText: "attribute",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+					{
+						Label:      "attribute2",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "$.attribute2",
+						InsertText: "attribute2",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
 						},
@@ -456,21 +454,21 @@ func TestCompletion(t *testing.T) {
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
 					{
-						Label:      "foo",
-						Kind:       protocol.FieldCompletion,
-						Detail:     "obj.foo",
-						InsertText: "foo",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "object",
-						},
-					},
-					{
 						Label:      "bar",
 						Kind:       protocol.FieldCompletion,
 						Detail:     "obj.bar",
 						InsertText: "bar",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
+						},
+					},
+					{
+						Label:      "foo",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "obj.foo",
+						InsertText: "foo",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
 						},
 					},
 				},
@@ -922,21 +920,21 @@ func TestCompletion(t *testing.T) {
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
 					{
-						Label:      "two",
-						Kind:       protocol.FieldCompletion,
-						Detail:     "binaryObject.two",
-						InsertText: "two",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "string",
-						},
-					},
-					{
 						Label:      "one",
 						Kind:       protocol.FieldCompletion,
 						Detail:     "binaryObject.one",
 						InsertText: "one",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "number",
+						},
+					},
+					{
+						Label:      "two",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "binaryObject.two",
+						InsertText: "two",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
 						},
 					},
 				},
@@ -984,6 +982,25 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "argField",
 						InsertText: "argField",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "binary with override",
+			filename:        "./testdata/complete/binaryobject_override.jsonnet",
+			replaceString:   "a: binaryObject.one,",
+			replaceByString: "a: binaryObject.override.f",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "field",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "field",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "number",
 						},
