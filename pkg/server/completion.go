@@ -65,29 +65,9 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		log.Errorf("######## could not find ast node %v", err)
 	}
 
-	if info.InjectIndex {
-		log.Errorf("## Injecting index with target %v", reflect.TypeOf(searchStack.Peek()))
-		// TODO: this breaks function arguments
-		//if len(searchStack.Stack) > 1 {
-		//	log.Errorf("Next next type %v", reflect.TypeOf(searchStack.Stack[len(searchStack.Stack)-2]))
-		//	if _, ok := searchStack.Stack[len(searchStack.Stack)-2].(*ast.Apply); ok {
-		//		// xy.myFunc() resolves to index to the var myFunc and not apply. Therefore we need the parent node
-		//		searchStack.Pop()
-		//	}
-		//}
-		// TODO: injecting is still broken. From deleting index -> works. Adding . -> does not work
-		//node := getVarIndexApply(searchStack)
-		searchStack.PrintStack()
-		searchStack.Push(&ast.Index{
-			Target: searchStack.Peek(),
-			Index:  &ast.LiteralString{Value: ""},
-		})
-	}
 	log.Errorf("top item %v", reflect.TypeOf(searchStack.Peek()))
 
-	// TODO: If the previous token is a "command ending" (,:;{[) symbol use global completion
-
-	items := s.createCompletionItems(searchStack, params.Position)
+	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex)
 	log.Errorf("Items: %+v", items)
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 }
@@ -510,11 +490,11 @@ stackLoop:
 }
 
 // Every node gets their own nodestack. E.g. to allow injecting local binds (for function args)
-func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
+func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos protocol.Position, noEndIndex bool) []protocol.CompletionItem {
 	items := []protocol.CompletionItem{}
 	searchstack = searchstack.Clone()
 	indexName := ""
-	if topIndex, ok := searchstack.Peek().(*ast.Index); ok {
+	if topIndex, ok := searchstack.Peek().(*ast.Index); ok && !noEndIndex {
 		if indexNode, ok := topIndex.Index.(*ast.LiteralString); ok {
 			indexName = indexNode.Value
 			log.Errorf("Removing %s from stack", indexName)
