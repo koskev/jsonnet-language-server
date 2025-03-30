@@ -148,12 +148,9 @@ func (s *Server) getFixedAst(filename string, newText string, oldText string) (a
 	addEndings := []string{";", "),", ",", ")"}
 
 	// First remover all endings
-	for {
-		if !slices.Contains(removeEndings, rune(newText[lineEndingLocation-1])) {
-			break
-		}
+	for slices.Contains(removeEndings, rune(newText[lineEndingLocation-1])) {
 		newText = newText[:lineEndingLocation-1] + newText[lineEndingLocation:]
-		lineEndingLocation = lineEndingLocation - 1
+		lineEndingLocation--
 	}
 	// Try to fix ast with all suffixes removed
 	ast, err = jsonnet.SnippetToAST(filename, newText)
