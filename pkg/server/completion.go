@@ -436,20 +436,6 @@ stackLoop:
 		// Resolve arguments and push them to the stack
 		case *ast.Apply:
 			log.Errorf("UNHANDLED APPLY!")
-			resolvestack := nodestack.NewNodeStack(callNode)
-			log.Errorf("APPLY TARGET %v", reflect.TypeOf(callstack.Peek()))
-			newStack := s.ResolveApplyArguments(resolvestack, documentstack)
-			if newStack == nil {
-				log.Errorf("Resolving failed")
-				return nil
-			}
-			newObject := s.getDesugaredObject(newStack, documentstack)
-			if newObject == nil {
-				log.Errorf("Desugar failed")
-				return nil
-			}
-			log.Errorf("After apply: %s", DesugaredObjectFieldsToString(newObject))
-			baseObject = newObject
 		// Search the current DesugaredObject and get the body for this index
 		case *ast.Index:
 			// TODO: special case if apply
@@ -474,9 +460,25 @@ stackLoop:
 					continue
 				}
 				if indexName.Value == fieldName.Value {
-					// TODO: member body might have function -> Bind stuff to stack
-					log.Errorf("Found field %s", indexName.Value)
-					newDesugar := s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
+					// TODO: member body might have function -> Bind stuff to stack and resolve object
+					// TODO: currently not working due to wrong injected target -> var but should be apply
+					// TODO SO: Maybe modify apply and add function as target and call getDesugaredObject
+					funcNode, funcOk := field.Body.(*ast.Function)
+					applyNode, applyOk := callstack.Peek().(*ast.Apply)
+					var newDesugar *ast.DesugaredObject
+					log.Errorf("Apply func %v %v", applyOk, funcOk)
+					if applyOk && funcOk {
+						// Pop the apply Node
+						callstack.Pop()
+						stack := s.addFunctionToStack(applyNode, funcNode, documentstack)
+						if stack != nil {
+							documentstack.Stack = append(documentstack.Stack, stack.Stack...)
+						}
+						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(stack.Peek()), documentstack)
+					} else {
+						log.Errorf("Found field %s", indexName.Value)
+						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
+					}
 					if newDesugar != nil {
 						//if newDesugar, ok := field.Body.(*ast.DesugaredObject); ok {
 						baseObject = newDesugar
@@ -486,6 +488,7 @@ stackLoop:
 				}
 			}
 			// No match
+			log.Errorf("No match for %v", indexName)
 			return nil
 		}
 	}
