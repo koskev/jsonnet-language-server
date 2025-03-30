@@ -120,8 +120,11 @@ func (s *Server) DidChange(_ context.Context, params *protocol.DidChangeTextDocu
 }
 
 func getDiffPosition(newText string, oldText string) int {
-	for i, _ := range newText {
-		if i > len(oldText) {
+	for i := range newText {
+		if i >= len(oldText) {
+			return i
+		}
+		if i >= len(newText) {
 			return i
 		}
 		if newText[i] != oldText[i] {
