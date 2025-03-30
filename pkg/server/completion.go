@@ -170,6 +170,11 @@ stackLoop:
 		return nil
 	}
 
+	return s.addFunctionToStack(applyNode, funcNode, searchstack)
+}
+
+func (s *Server) addFunctionToStack(applyNode *ast.Apply, funcNode *ast.Function, searchstack *nodestack.NodeStack) *nodestack.NodeStack {
+	searchstack = searchstack.Clone()
 	// Get all positional arguments first. After that only named arguments remain
 	for i, arg := range applyNode.Arguments.Positional {
 		log.Errorf("Positional argument: %s", funcNode.Parameters[i].Name)
@@ -188,7 +193,6 @@ stackLoop:
 			}}})
 	}
 	searchstack.Push(funcNode.Body)
-
 	return searchstack
 }
 
