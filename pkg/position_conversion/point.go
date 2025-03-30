@@ -26,6 +26,12 @@ func ProtocolToCST(point protocol.Position) sitter.Point {
 		Column: uint(point.Character),
 	}
 }
+func CSTToProtocol(point sitter.Point) protocol.Position {
+	return protocol.Position{
+		Line:      uint32(point.Row),
+		Character: uint32(point.Column),
+	}
+}
 
 func ASTToCST(location ast.Location) sitter.Point {
 	return sitter.Point{

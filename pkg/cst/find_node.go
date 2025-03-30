@@ -12,29 +12,42 @@ import (
 	tree_sitter "github.com/tree-sitter/go-tree-sitter"
 )
 
+type CompletionType = int
+
+const (
+	CompleteGlobal = iota
+	CompleteLocal
+	CompleteImport
+)
+
 type CompletionNodeInfo struct {
-	Node        *tree_sitter.Node
-	InjectIndex bool
-	Global      bool
-	Index       string
+	Node           *tree_sitter.Node
+	InjectIndex    bool
+	Index          string
+	CompletionType CompletionType
+}
+
+func positionToIndex(content string, pos protocol.Position) int {
+	currentPos := 0
+	currentLine := 0
+	for i, char := range content {
+		if currentLine == int(pos.Line) {
+			currentPos = i + int(pos.Character)
+			break
+		}
+		if char == '\n' {
+			currentLine++
+		}
+	}
+	return currentPos
 }
 
 func getCurrentIndex(content string, pos protocol.Position) string {
 	whitespace := []rune{' ', '\n', '\t'}
 	endingTokens := []rune{':', ',', ';', '(', '=', '['}
 
-	currentPos := 0
-	// FUCK YOU GO AND YOUR NON EXISTING FEATURES T_T
-	currentLine := 0
-	for i, char := range content {
-		if currentLine == int(pos.Line) {
-			currentPos = i + int(pos.Character) - 1
-			break
-		}
-		if char == '\n' {
-			currentLine += 1
-		}
-	}
+	// We want the position before the cursor
+	currentPos := max(0, positionToIndex(content, pos)-1)
 
 	index := []rune{}
 
@@ -49,9 +62,8 @@ func getCurrentIndex(content string, pos protocol.Position) string {
 		}
 		if currentPos == 0 {
 			break
-		} else {
-			currentPos -= 1
 		}
+		currentPos--
 	}
 	return string(index)
 }
@@ -62,9 +74,11 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	// search if prev token is a :,;
 	currentIndex := getCurrentIndex(content, pos)
 	log.Errorf("################# current index %v", currentIndex)
+	// Default to local completion
+	info.CompletionType = CompleteLocal
 
 	if !strings.Contains(currentIndex, ".") {
-		info.Global = true
+		info.CompletionType = CompleteGlobal
 		info.Index = currentIndex
 	}
 
@@ -73,9 +87,28 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 		return nil, err
 	}
 	found := GetNodeAtPos(root, position.ProtocolToCST(pos))
-	log.Errorf("Found: %v", found.GrammarName())
+	log.Errorf("#Found: %v", found.GrammarName())
 
+	//nolint: gocritic
 	switch found.GrammarName() {
+	// In import
+	case NodeStringStart:
+		found = found.NextSibling()
+		fallthrough
+	case NodeStringContent:
+		stringNode := found.Parent()
+		if !IsNode(stringNode, NodeString) {
+			break
+		}
+		importNode := stringNode.Parent()
+		if IsNode(importNode, NodeImport) {
+			info.CompletionType = CompleteImport
+			startIndex := positionToIndex(content, position.CSTToProtocol(found.StartPosition()))
+			endIndex := positionToIndex(content, position.CSTToProtocol(found.EndPosition()))
+			info.Index = content[startIndex:endIndex]
+			return &info, nil
+		}
+
 	case NodeDot:
 		info.InjectIndex = true
 		potentialNode := GetPrevNode(found)
@@ -86,9 +119,6 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 			// myObj.
 			found = potentialNode
 		}
-	case NodeLocal:
-		// Probably global
-		info.Global = true
 	}
 
 	// Inside an Object the node is an error if it ends in a dot

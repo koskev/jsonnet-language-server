@@ -3,14 +3,11 @@ package server
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"reflect"
 	"strings"
 
@@ -18,6 +15,7 @@ import (
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/ast/processing"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
+	"github.com/grafana/jsonnet-language-server/pkg/utils"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/sirupsen/logrus"
 )
@@ -71,27 +69,6 @@ func (s *Server) getSelectedIdentifier(filename string, pos protocol.Position) (
 	}
 
 	return "", fmt.Errorf("unable to find selected identifier")
-}
-
-func getAllFiles(dir string) ([]string, error) {
-	// TODO: handle deleted and created files in cache
-	var files []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		if !d.IsDir() {
-			if filepath.Ext(path) == ".libsonnet" || filepath.Ext(path) == ".jsonnet" {
-				files = append(files, path)
-			}
-		}
-		return nil
-	})
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("getting all files: %w", err)
-	}
-	return files, nil
 }
 
 func (s *Server) findIdentifierLocations(path string, identifier string) ([]ast.LocationRange, error) {
@@ -176,8 +153,9 @@ func (s *Server) findAllReferences(sourceURI protocol.DocumentURI, pos protocol.
 	folders = append(folders, path.Dir(u.Path))
 	allFiles := map[protocol.DocumentURI]struct{}{}
 
+	// TODO: handle deleted and created files in cache
 	for _, folder := range folders {
-		files, err := getAllFiles(folder)
+		files, err := utils.GetAllJsonnetFiles(folder)
 		if err != nil {
 			return nil, err
 		}

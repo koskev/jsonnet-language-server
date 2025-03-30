@@ -209,7 +209,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 
 	return &protocol.InitializeResult{
 		Capabilities: protocol.ServerCapabilities{
-			CompletionProvider:         protocol.CompletionOptions{TriggerCharacters: []string{"."}},
+			CompletionProvider:         protocol.CompletionOptions{TriggerCharacters: []string{".", "/"}},
 			HoverProvider:              true,
 			DefinitionProvider:         true,
 			DocumentFormattingProvider: true,

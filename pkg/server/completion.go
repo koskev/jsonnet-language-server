@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -47,13 +48,42 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		return nil, err
 	}
 
-	if info.Global {
+	if info.CompletionType == cst.CompleteGlobal {
 		searchStack, err := processing.FindNodeByPosition(doc.AST, position.ProtocolToAST(params.Position))
 		if err != nil {
 			log.Errorf("Unable to find node position: %v", err)
 			return nil, err
 		}
 		items := s.completeGlobal([]string{info.Index}, searchStack, params.Position)
+		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
+	} else if info.CompletionType == cst.CompleteImport {
+		allFiles := map[string]bool{}
+		indexParts := strings.Split(info.Index, "/")
+		currentPath := strings.Join(indexParts[:len(indexParts)-1], "/")
+		//		currentIndex := indexParts[len(indexParts)-1]
+		for _, jpath := range s.configuration.JPaths {
+			currentPath := filepath.Join(jpath, currentPath)
+			log.Errorf("PATH: %v", currentPath)
+			files, err := utils.GetAllJsonnetFiles(currentPath)
+			if err != nil {
+				return nil, err
+			}
+			jpathAbsolute, err := filepath.Abs(jpath)
+			if err != nil {
+				return nil, err
+			}
+			for _, file := range files {
+				relativePath := strings.TrimPrefix(file, jpathAbsolute+"/")
+				allFiles[relativePath] = true
+			}
+		}
+		var items []protocol.CompletionItem
+		for relPath := range allFiles {
+			items = append(items, protocol.CompletionItem{
+				Label: relPath,
+				Kind:  protocol.FileCompletion,
+			})
+		}
 		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 	}
 

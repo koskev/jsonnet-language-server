@@ -23,6 +23,7 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
     * Completes returns of functions
       * e.g. myFunc({val: 5}).argVal.val
       * Builder pattern works in a few cases (still work to do)
+    * Complete imports from all jpaths
   * Basic automatic ast fix
 
 ### TODO

@@ -28,6 +28,9 @@ const (
 	NodeBind           = "bind"
 	NodeImport         = "import"
 	NodeError          = "ERROR"
+	NodeStringContent  = "string_content"
+	NodeStringStart    = "string_start"
+	NodeString         = "string"
 )
 
 func NewTree(ctx context.Context, content string) (*sitter.Node, error) {
