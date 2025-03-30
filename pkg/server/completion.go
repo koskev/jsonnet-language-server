@@ -332,7 +332,6 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 	var desugaredObjects []*ast.DesugaredObject
 
 	log.Errorf("getDesugaredObject start: %+v", reflect.TypeOf(searchstack.Peek()))
-	// TODO: multiple objects -> merge or return multiple
 	for !searchstack.IsEmpty() {
 		documentstack.Push(searchstack.Peek())
 		log.Errorf("Getting desugared object for %v", reflect.TypeOf(searchstack.Peek()))
@@ -342,12 +341,14 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			log.Errorf("next search %v", reflect.TypeOf(callstack.Peek()))
 			switch currentNode.Id {
 			case "std", "$std":
-				searchstack = s.ResolveApplyArguments(nodestack.NewNodeStack(callstack.PeekFront()), documentstack)
+				newstack := s.ResolveApplyArguments(nodestack.NewNodeStack(callstack.PeekFront()), documentstack)
+				if newstack != nil {
+					searchstack = newstack
+				}
 				// XXX: Dollar is a node and not ast.Dollar. For whatever reason
 			case "$":
 				searchstack.Push(&ast.Dollar{NodeBase: currentNode.NodeBase})
 			default:
-				// TODO: resolve default values of function arguments
 				ref := processing.FindNodeByID(documentstack, currentNode.Id)
 				if ref != nil {
 					log.Errorf("Ref is %v", reflect.TypeOf(ref))
