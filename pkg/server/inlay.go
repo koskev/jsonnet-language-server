@@ -102,6 +102,10 @@ func (s *Server) getInlayHintApplyArgs(tree *nodetree.NodeTree, root ast.Node, u
 			names = append(names, string(param.Name))
 		}
 		for i, applyParam := range currentNode.Arguments.Positional {
+			if i >= len(names) {
+				// Somehow we have more apply arguments, than function arguments
+				break
+			}
 			pos := position.ASTToProtocol(applyParam.Expr.Loc().Begin)
 			inlayHints = append(inlayHints, protocol.InlayHint{
 				Position:     &pos,
