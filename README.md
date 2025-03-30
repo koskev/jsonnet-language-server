@@ -18,23 +18,33 @@ A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonn
     * Completion with named args and objects without a space
     * Binary Object completion
     * Complete simple for objects (hardcoded values only for now)
+  * Complete rework of the autocomplete code
+    * Supports newlines and spaces completion
+    * Completes returns of functions
+      * e.g. myFunc({val: 5}).argVal.val
+      * Builder pattern works in a few cases (still work to do)
+  * Basic automatic ast fix
 
 ### TODO
- * Rework autocomplete to use an CST in most (all?) cases. Fixes
-   * (import "a.libsonnet").xyz
-   * var .name
-   * var\n .name
-   * and others
- * Support completing return values of functions with conditionals, self, etc.
+ * Support completing conditionals
  * Refactor/Cleanup new features
  * Original Bugs
     * Broken go to for dollar inside locals
- * Proper caching implementation
  * General cleanup after understanding more lsp stuff
  * Code actions?
  * Flow typing?
 
 ## Features
+
+### LSP Config parameter
+
+#### inlay_config
+| Key    | type | description |
+| -------- | ------- | ------- |
+| enable_debug_ast | bool    | Enables debug ast hints |
+| enable_index_value | bool     | Resolves some index values |
+| enable_function_args    | bool    | Shows the names of unnamed parameters in functions |
+
 
 ### Jump to definition
 
