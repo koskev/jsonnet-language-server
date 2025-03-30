@@ -971,6 +971,26 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "completion with arg value",
+			filename:        "./testdata/complete/functionbody.jsonnet",
+			replaceString:   "a: myFunc(exampleArg).field,",
+			replaceByString: "a: myFunc(exampleArg).field.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "argField",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "argField",
+						InsertText: "argField",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
