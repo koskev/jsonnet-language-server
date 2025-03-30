@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 
@@ -12,6 +13,14 @@ import (
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 )
+
+type ConfigurationInlay struct {
+	// Of course go does neither support options nor default values...
+	// So since go is a stupid language and I don't want to hack proper defaults in they are just all false by default
+	EnableDebugAst     bool `json:"enable_debug_ast"`
+	EnableIndexValue   bool `json:"enable_index_value"`
+	EnableFunctionArgs bool `json:"enable_function_args"`
+}
 
 type Configuration struct {
 	ResolvePathsWithTanka bool
@@ -24,7 +33,7 @@ type Configuration struct {
 	EnableLintDiagnostics     bool
 	ShowDocstringInCompletion bool
 	MaxInlayLength            int
-	EnableDebugAstInlay       bool
+	Inlay                     ConfigurationInlay
 }
 
 func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidChangeConfigurationParams) error {
@@ -108,12 +117,21 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 			} else {
 				return fmt.Errorf("%w: unsupported settings value for max_inlay_length. expected int. got: %T", jsonrpc2.ErrInvalidParams, sv)
 			}
-		case "enable_debug_ast_inlay":
-			if boolVal, ok := sv.(bool); ok {
-				s.configuration.EnableDebugAstInlay = boolVal
-			} else {
-				return fmt.Errorf("%w: unsupported settings value for enable_debug_ast_inlay. expected boolean. got: %T", jsonrpc2.ErrInvalidParams, sv)
+		case "inlay_config":
+			var inlayConfig ConfigurationInlay
+			stringMap, ok := sv.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%w: unsupported settings value for inlay_config. Expected json object. got: %T", jsonrpc2.ErrInvalidParams, sv)
 			}
+			configBytes, err := json.Marshal(stringMap)
+			if err != nil {
+				return fmt.Errorf("marshalling inlay config: %w", err)
+			}
+			err = json.Unmarshal(configBytes, &inlayConfig)
+			if err != nil {
+				return fmt.Errorf("unmarshalling inlay config: %w", err)
+			}
+			s.configuration.Inlay = inlayConfig
 
 		default:
 			return fmt.Errorf("%w: unsupported settings key: %q", jsonrpc2.ErrInvalidParams, sk)

@@ -33,9 +33,13 @@ func (s *Server) InlayHint(_ context.Context, params *protocol.InlayHintParams) 
 	tree := nodetree.BuildTree(nil, doc.AST)
 	vm := s.getVM(params.TextDocument.URI.SpanURI().Filename())
 
-	inlayHints = append(inlayHints, s.getInlayHintIndex(tree, vm)...)
-	inlayHints = append(inlayHints, s.getInlayHintApplyArgs(tree, doc.AST, params.TextDocument.URI)...)
-	if s.configuration.EnableDebugAstInlay {
+	if s.configuration.Inlay.EnableIndexValue {
+		inlayHints = append(inlayHints, s.getInlayHintIndex(tree, vm)...)
+	}
+	if s.configuration.Inlay.EnableFunctionArgs {
+		inlayHints = append(inlayHints, s.getInlayHintApplyArgs(tree, doc.AST, params.TextDocument.URI)...)
+	}
+	if s.configuration.Inlay.EnableDebugAst {
 		inlayHints = append(inlayHints, s.getInlayHintASTDebug(tree)...)
 	}
 	return inlayHints, nil
