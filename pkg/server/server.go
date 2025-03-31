@@ -148,7 +148,7 @@ func (s *Server) getFixedAst(filename string, newText string, oldText string) (a
 	addEndings := []string{";", "),", ",", ")"}
 
 	// First remover all endings
-	for slices.Contains(removeEndings, rune(newText[lineEndingLocation-1])) {
+	for len(newText) > 0 && lineEndingLocation > 0 && slices.Contains(removeEndings, rune(newText[lineEndingLocation-1])) {
 		newText = newText[:lineEndingLocation-1] + newText[lineEndingLocation:]
 		lineEndingLocation--
 	}

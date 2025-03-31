@@ -441,10 +441,12 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			searchstack.Push(currentNode.Right)
 			searchstack.Push(currentNode.Left)
 		case *ast.Apply:
-			// TODO: this is somehow needed
-			searchstack.Push(currentNode)
-			applystack := s.ResolveApplyArguments(searchstack, documentstack)
+			tempstack := searchstack.Clone()
+			// push the apply on the stack again to resolve the arguments
+			tempstack.Push(currentNode)
+			applystack := s.ResolveApplyArguments(tempstack, documentstack)
 			if applystack != nil {
+				// TODO: this might be wrong and we (also) need the documentstack? too tired right now
 				searchstack = applystack
 				log.Errorf("New search stack %v", searchstack)
 			}
