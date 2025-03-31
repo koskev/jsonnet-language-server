@@ -48,7 +48,8 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		return nil, err
 	}
 
-	if info.CompletionType == cst.CompleteGlobal {
+	switch info.CompletionType {
+	case cst.CompleteGlobal:
 		searchStack, err := processing.FindNodeByPosition(doc.AST, position.ProtocolToAST(params.Position))
 		if err != nil {
 			log.Errorf("Unable to find node position: %v", err)
@@ -56,7 +57,8 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		}
 		items := s.completeGlobal([]string{info.Index}, searchStack, params.Position)
 		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
-	} else if info.CompletionType == cst.CompleteImport {
+
+	case cst.CompleteImport:
 		allFiles := map[string]bool{}
 		indexParts := strings.Split(info.Index, "/")
 		currentPath := strings.Join(indexParts[:len(indexParts)-1], "/")
@@ -172,6 +174,13 @@ stackLoop:
 		switch currentNode := searchstack.Pop().(type) {
 		default:
 			log.Errorf("UNHANDLED IN RESOLVE %v", reflect.TypeOf(currentNode))
+		case *ast.Import:
+			_, imported, err := s.getAst(currentNode.File.Value, currentNode.LocRange.FileName)
+			if err != nil {
+				log.Errorf("could not import ast from file %s: %v", currentNode.LocRange.FileName, err)
+				return nil
+			}
+			searchstack.Push(imported)
 
 		case *ast.Index:
 			log.Errorf("INDEX TARGET %v", reflect.TypeOf(currentNode.Target))
@@ -274,7 +283,7 @@ stackLoop:
 	return prevNode
 }
 
-func (s *Server) buildCallStack(node ast.Node, documentstack *nodestack.NodeStack) *nodestack.NodeStack {
+func (s *Server) buildCallStack(node ast.Node, _ *nodestack.NodeStack) *nodestack.NodeStack {
 	nodesToSearch := nodestack.NewNodeStack(node)
 	callStack := &nodestack.NodeStack{}
 	log.Errorf("Building call stack from %v", reflect.TypeOf(node))

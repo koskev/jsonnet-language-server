@@ -10,9 +10,6 @@ import (
 )
 
 func (p *Processor) CompileNode(root ast.Node, node ast.Node) (ast.Node, error) {
-	//t := nodetree.BuildTree(nil, root)
-	//logrus.Errorf("PRE\n%s", t)
-
 	// get node with stack
 	stack, err := FindNodeByPosition(root, node.Loc().Begin)
 	if err != nil {
@@ -26,8 +23,6 @@ func (p *Processor) CompileNode(root ast.Node, node ast.Node) (ast.Node, error) 
 		}
 	}
 
-	//t = nodetree.BuildTree(nil, root)
-	//logrus.Errorf("POST\n%s", t)
 	logrus.Errorf("Evaluating node")
 	evalResult, err := p.vm.Evaluate(root)
 	if err != nil {

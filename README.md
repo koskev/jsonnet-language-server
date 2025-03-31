@@ -2,6 +2,8 @@
 
 A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonnet](https://jsonnet.org).
 
+Master is (probably) always somehow broken or not tested on a complex codebase. Tags should be stable though
+
 ## Features of this fork
 
  * Autocomplete function parameter names

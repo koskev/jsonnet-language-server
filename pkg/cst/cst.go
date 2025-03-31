@@ -33,7 +33,7 @@ const (
 	NodeString         = "string"
 )
 
-func NewTree(ctx context.Context, content string) (*sitter.Node, error) {
+func NewTree(_ context.Context, content string) (*sitter.Node, error) {
 	parser := sitter.NewParser()
 	defer parser.Close()
 	err := parser.SetLanguage(sitter.NewLanguage(jsonnet.Language()))
@@ -41,7 +41,7 @@ func NewTree(ctx context.Context, content string) (*sitter.Node, error) {
 		return nil, err
 	}
 	tree := parser.Parse([]byte(content), nil)
-	//node, err := parser.Parse(ctx, []byte(content), sitter.NewLanguage(jsonnet.GetLanguage()))
+	// node, err := parser.Parse(ctx, []byte(content), sitter.NewLanguage(jsonnet.GetLanguage()))
 	if tree == nil {
 		return nil, fmt.Errorf("parsing tree")
 	}
