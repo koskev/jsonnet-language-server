@@ -63,7 +63,10 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		indexParts := strings.Split(info.Index, "/")
 		currentPath := strings.Join(indexParts[:len(indexParts)-1], "/")
 		//		currentIndex := indexParts[len(indexParts)-1]
-		for _, jpath := range s.configuration.JPaths {
+		importPaths := s.configuration.JPaths
+		currentFileDir := filepath.Dir(doc.Item.URI.SpanURI().Filename())
+		importPaths = append(importPaths, currentFileDir)
+		for _, jpath := range importPaths {
 			currentPath := filepath.Join(jpath, currentPath)
 			log.Errorf("PATH: %v", currentPath)
 			files, err := utils.GetAllJsonnetFiles(currentPath)
@@ -194,6 +197,7 @@ stackLoop:
 			// TODO: Special case: var.Id starts with $ -> internal function and needs to be evaluated
 			// TODO: this requires us to implement at least $std.$objectFlatMerge due to hidden objects
 			// TODO: special case if var is std -> evaluate // TODO: hidden objects?
+			//nolint:goconst
 			if len(indexList) > 0 && (indexList[0] == "std" || indexList[0] == "$std") {
 				// Special case: Call std function
 				evalResult, _ := s.getVM(currentNode.LocRange.FileName).Evaluate(currentNode)
@@ -346,6 +350,7 @@ func DesugaredObjectKeyToString(node ast.Node) *ast.LiteralString {
 	return nil
 }
 
+//nolint:unused
 func (s *Server) getReturnObject(root ast.Node) *nodestack.NodeStack {
 	objectStack := nodestack.NewNodeStack(root)
 	searchstack := nodestack.NewNodeStack(root)
@@ -369,6 +374,8 @@ searchLoop:
 // TODO: handle appply in this function
 // Just add the apply node to the documentstack
 // Then on function search for the apply node and add the variables to the stack
+//
+//nolint:gocyclo // I know TODO
 func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstack *nodestack.NodeStack) *ast.DesugaredObject {
 	searchstack := nodestack.NewNodeStack(callstack.Peek())
 	desugaredObjects := []*ast.DesugaredObject{}
@@ -408,10 +415,10 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 					log.Errorf("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
 				}
 				log.Errorf("Compiled! %+v", reflect.TypeOf(node))
-				//newstack := s.ResolveApplyArguments(nodestack.NewNodeStack(callstack.PeekFront()), documentstack)
-				//if newstack != nil {
+				// newstack := s.ResolveApplyArguments(nodestack.NewNodeStack(callstack.PeekFront()), documentstack)
+				// if newstack != nil {
 				//	searchstack = newstack
-				//}
+				// }
 			case "$":
 				// XXX: Dollar is a node and not ast.Dollar. For whatever reason
 				searchstack.Push(&ast.Dollar{NodeBase: currentNode.NodeBase})
@@ -677,11 +684,11 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		}
 	}
 	// tempstack := searchstack.Clone()
-	//for !tempstack.IsEmpty() {
+	// for !tempstack.IsEmpty() {
 	//	log.Errorf("TREE FOR: %v", reflect.TypeOf(tempstack.Peek()))
 	//	t := nodetree.BuildTree(nil, tempstack.Pop())
 	//	log.Errorf("%s", t)
-	//}
+	// }
 
 	log.Errorf("Searching completion for %v at %v", reflect.TypeOf(searchstack.Peek()), pos)
 	object := s.buildDesugaredObject(searchstack)
