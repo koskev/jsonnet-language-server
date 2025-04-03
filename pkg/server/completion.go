@@ -366,9 +366,17 @@ searchLoop:
 	return objectStack
 }
 
+// TODO: handle appply in this function
+// Just add the apply node to the documentstack
+// Then on function search for the apply node and add the variables to the stack
 func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstack *nodestack.NodeStack) *ast.DesugaredObject {
 	searchstack := nodestack.NewNodeStack(callstack.Peek())
-	var desugaredObjects []*ast.DesugaredObject
+	desugaredObjects := []*ast.DesugaredObject{}
+	if len(documentstack.Stack) > 100 {
+		log.Errorf("Stack too large")
+		documentstack.PrintStack()
+		return nil
+	}
 
 	log.Errorf("getDesugaredObject start: %+v", reflect.TypeOf(searchstack.Peek()))
 	for !searchstack.IsEmpty() {
@@ -380,12 +388,32 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			log.Errorf("next search %v", reflect.TypeOf(callstack.Peek()))
 			switch currentNode.Id {
 			case "std", "$std":
-				newstack := s.ResolveApplyArguments(nodestack.NewNodeStack(callstack.PeekFront()), documentstack)
-				if newstack != nil {
-					searchstack = newstack
+				// TODO: Do we even need this? Seems like the one at the apply is enough
+				indexList := searchstack.Clone().BuildIndexList()
+				log.Errorf("var indexList: %v", indexList)
+				callstack.PrintStack()
+				toCompileNode := callstack.PeekFront()
+				log.Errorf("STD CALL %T", toCompileNode)
+				evalResult, err := s.getVM(toCompileNode.Loc().FileName).Evaluate(toCompileNode)
+				if err != nil {
+					log.Errorf("evaluating node: %v", err)
+					continue
 				}
-				// XXX: Dollar is a node and not ast.Dollar. For whatever reason
+				node, err := jsonnet.SnippetToAST("", evalResult)
+				if err != nil {
+					log.Errorf("Failed to compile node %v", err)
+				}
+				searchstack.Push(node)
+				if desugar, ok := node.(*ast.DesugaredObject); ok {
+					log.Errorf("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
+				}
+				log.Errorf("Compiled! %+v", reflect.TypeOf(node))
+				//newstack := s.ResolveApplyArguments(nodestack.NewNodeStack(callstack.PeekFront()), documentstack)
+				//if newstack != nil {
+				//	searchstack = newstack
+				//}
 			case "$":
+				// XXX: Dollar is a node and not ast.Dollar. For whatever reason
 				searchstack.Push(&ast.Dollar{NodeBase: currentNode.NodeBase})
 			default:
 				ref := processing.FindNodeByID(documentstack, currentNode.Id)
@@ -398,7 +426,10 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			}
 		case *ast.DesugaredObject:
 			// TODO: evaluate name/key
-			desugaredObjects = append(desugaredObjects, currentNode)
+			// Apprently nil can have a type...
+			if currentNode != nil {
+				desugaredObjects = append(desugaredObjects, currentNode)
+			}
 		case *ast.Self:
 			// Search for next DesugaredObject
 			for !documentstack.IsEmpty() {
@@ -414,31 +445,46 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				}
 			}
 		case *ast.Import:
+			log.Errorf("Trying to import %s from %s", currentNode.File.Value, currentNode.LocRange.FileName)
 			_, imported, err := s.getAst(currentNode.File.Value, currentNode.LocRange.FileName)
 			if err == nil {
+				// TODO: import has to have a clean stack (otherwise the locals might be weird?) but an import cannot always be a DesugaredObject due to function calls
 				log.Errorf("Imported for %v", reflect.TypeOf(imported))
 				// importedObject := s.getDesugaredObject(imported, nodestack.NewNodeStack(imported))
 				// TODO: find the "return" of the imported node -> most top level non local object
 				// TODO: maybe the existing function for top level object?
-				returnStack := s.getReturnObject(imported)
-				importedObject := s.buildDesugaredObject(returnStack)
-				if importedObject != nil {
-					searchstack.Push(importedObject)
-				} else {
-					log.Errorf("Imported is nil!")
-				}
+
+				// Remove the import from the stack to prevent infinite loops
+				documentstack.Pop()
+				searchstack.Push(imported)
+
+				// returnStack := s.getReturnObject(imported)
+				// log.Errorf("Prev %T prevprev %T", documentstack.Peek(), documentstack.Stack[len(documentstack.Stack)-2])
+				//// FIXME: workaround for (import 'x')(arg) call
+				// if len(documentstack.Stack) > 1 {
+				//	if applyNode, ok := documentstack.Stack[len(documentstack.Stack)-2].(*ast.Apply); ok {
+				//		returnStack.PushFront(applyNode)
+				//	}
+				// }
+
+				////importedObject := s.buildDesugaredObject(returnStack)
+				// importedObject := s.getDesugaredObject(returnStack.Clone(), returnStack)
+				// if importedObject != nil {
+				//	searchstack.Push(importedObject)
+				// } else {
+				//	log.Errorf("Imported is nil!")
+				// }
 			} else {
 				log.Errorf("Failed to import %s: %v", currentNode.File.Value, err)
 			}
 		case *ast.Local:
-			// TODO: why do we need this?
+			// We might push locals without a body e.g. for resolving function parameters
 			if currentNode.Body != nil {
 				log.Errorf("#### Local %v", reflect.TypeOf(currentNode.Body))
 				documentstack.Push(currentNode.Body)
 				obj := s.buildDesugaredObject(documentstack)
 				searchstack.Push(obj)
 			}
-			// searchstack.Push(currentNode.Body)
 		// There might be indices in imports
 		case *ast.Index:
 
@@ -450,15 +496,65 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			searchstack.Push(currentNode.Right)
 			searchstack.Push(currentNode.Left)
 		case *ast.Apply:
-			tempstack := searchstack.Clone()
-			// push the apply on the stack again to resolve the arguments
-			tempstack.Push(currentNode)
-			applystack := s.ResolveApplyArguments(tempstack, documentstack)
-			if applystack != nil {
-				// TODO: this might be wrong and we (also) need the documentstack? too tired right now
-				searchstack = applystack
-				log.Errorf("New search stack %v", searchstack)
+			indexList := nodestack.NewNodeStack(currentNode).BuildIndexList()
+			log.Errorf("indexList: %v", indexList)
+			// TODO: Special case: var.Id starts with $ -> internal function and needs to be evaluated
+			// TODO: this requires us to implement at least $std.$objectFlatMerge due to hidden objects
+			// TODO: special case if var is std -> evaluate // TODO: hidden objects?
+			if len(indexList) > 0 && (indexList[0] == "std" || indexList[0] == "$std") {
+				// Special case: Call std function
+				evalResult, _ := s.getVM(currentNode.LocRange.FileName).Evaluate(currentNode)
+				node, err := jsonnet.SnippetToAST(currentNode.LocRange.FileName, evalResult)
+				if err == nil {
+					searchstack.Push(node)
+					if desugar, ok := node.(*ast.DesugaredObject); ok {
+						log.Errorf("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
+					}
+					log.Errorf("Compiled! %+v", reflect.TypeOf(node))
+					continue
+				}
+				log.Errorf("Failed to compile node %v", err)
 			}
+			searchstack.Push(currentNode.Target)
+			// tempstack := searchstack.Clone()
+			//// push the apply on the stack again to resolve the arguments
+			// tempstack.Push(currentNode)
+			// applystack := s.ResolveApplyArguments(tempstack, documentstack)
+			// if applystack != nil {
+			//	// TODO: this might be wrong and we (also) need the documentstack? too tired right now
+			//	searchstack = applystack
+			//	log.Errorf("New search stack %v", searchstack)
+			// }
+		case *ast.Function:
+			// Find apply node on documentstack
+			foundNode, err := documentstack.FindNext(reflect.TypeFor[*ast.Apply]())
+			if err != nil {
+				log.Errorf("Unable to find apply node in document stack. Size %d", len(documentstack.Stack))
+				continue
+			}
+			//nolint:forcetypeassert // Due to the lack of features in go FindNext can't be a generic with a proper return type
+			applyNode := foundNode.(*ast.Apply)
+			searchstack.Push(currentNode.Body)
+			log.Errorf("pushed %T", currentNode.Body)
+
+			// Get all positional arguments first. After that only named arguments remain
+			for i, arg := range applyNode.Arguments.Positional {
+				log.Errorf("XXXXXXXXXXXXXXXXXXXX Positional argument: %s", currentNode.Parameters[i].Name)
+				searchstack.Push(&ast.Local{
+					Binds: []ast.LocalBind{{
+						Variable: currentNode.Parameters[i].Name,
+						Body:     arg.Expr,
+					}}})
+			}
+			for _, arg := range applyNode.Arguments.Named {
+				log.Errorf("Named argument: %+v", arg)
+				searchstack.Push(&ast.Local{
+					Binds: []ast.LocalBind{{
+						Variable: arg.Name,
+						Body:     arg.Arg,
+					}}})
+			}
+
 		case *ast.Dollar:
 			myStack := documentstack.Clone()
 			for !myStack.IsEmpty() {
@@ -490,6 +586,9 @@ func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.D
 	log.Errorf("Callstack %+v", callstack)
 	// First object is var or func -> resolve to desugared object (including their keys)
 	baseObject := s.getDesugaredObject(callstack, documentstack)
+	if baseObject == nil {
+		return nil
+	}
 
 	// All others are indices, apply, or array -> find ind DesugaredObject and resolve next layer
 stackLoop:
@@ -528,22 +627,22 @@ stackLoop:
 					// TODO: member body might have function -> Bind stuff to stack and resolve object
 					// TODO: currently not working due to wrong injected target -> var but should be apply
 					// TODO SO: Maybe modify apply and add function as target and call getDesugaredObject
-					funcNode, funcOk := field.Body.(*ast.Function)
-					applyNode, applyOk := callstack.Peek().(*ast.Apply)
-					var newDesugar *ast.DesugaredObject
-					log.Errorf("Apply func %v %v", applyOk, funcOk)
-					if applyOk && funcOk {
-						// Pop the apply Node
-						callstack.Pop()
-						stack := s.addFunctionToStack(applyNode, funcNode, documentstack)
-						if stack != nil {
-							documentstack.Stack = append(documentstack.Stack, stack.Stack...)
-						}
-						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(stack.Peek()), documentstack)
-					} else {
-						log.Errorf("Found field %s", indexName.Value)
-						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
-					}
+					//funcNode, funcOk := field.Body.(*ast.Function)
+					//applyNode, applyOk := callstack.Peek().(*ast.Apply)
+					//var newDesugar *ast.DesugaredObject
+					//log.Errorf("Apply func %v %v", applyOk, funcOk)
+					//if applyOk && funcOk {
+					//	// Pop the apply Node
+					//	callstack.Pop()
+					//	stack := s.addFunctionToStack(applyNode, funcNode, documentstack)
+					//	if stack != nil {
+					//		documentstack.Stack = append(documentstack.Stack, stack.Stack...)
+					//	}
+					//	newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(stack.Peek()), documentstack)
+					//} else {
+					log.Errorf("Found field %s", indexName.Value)
+					newDesugar := s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
+					//}
 					if newDesugar != nil {
 						//if newDesugar, ok := field.Body.(*ast.DesugaredObject); ok {
 						baseObject = newDesugar

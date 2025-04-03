@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"strings"
 
 	"github.com/google/go-jsonnet/ast"
 	"github.com/sirupsen/logrus"
@@ -30,6 +31,10 @@ func (s *NodeStack) Clone() *NodeStack {
 
 func (s *NodeStack) Push(n ast.Node) {
 	s.Stack = append(s.Stack, n)
+}
+
+func (s *NodeStack) PushFront(n ast.Node) {
+	s.Stack = append([]ast.Node{n}, s.Stack...)
 }
 
 func (s *NodeStack) Pop() ast.Node {
@@ -70,6 +75,7 @@ func (s *NodeStack) IsEmpty() bool {
 	return len(s.Stack) == 0
 }
 
+// RLY GO!? No member generics??? I thought you didn't have classes and this is just sugar for func(self, x, y)?!?
 func (s *NodeStack) FindNext(nodeType reflect.Type) (ast.Node, error) {
 	// RLY GO? No proper iterators!?
 	for i := range s.Stack {
@@ -130,7 +136,21 @@ func (s *NodeStack) ReorderDesugaredObjects() *NodeStack {
 
 func (s *NodeStack) PrintStack() {
 	tempstack := s.Clone()
+	output := strings.Builder{}
 	for !tempstack.IsEmpty() {
-		logrus.Errorf("Stack: %v", reflect.TypeOf(tempstack.Pop()))
+		currentNode := tempstack.Pop()
+		output.WriteString(fmt.Sprintf("Stack: %T", currentNode))
+		switch node := currentNode.(type) {
+		case *ast.LiteralString:
+			output.WriteString(fmt.Sprintf(" %s", node.Value))
+		case *ast.Var:
+			output.WriteString(fmt.Sprintf(" %s", node.Id))
+		case *ast.Index:
+			if nameNode, ok := node.Index.(*ast.LiteralString); ok {
+				output.WriteString(fmt.Sprintf(" %s", nameNode.Value))
+			}
+		}
+		output.WriteString("\n")
 	}
+	logrus.Errorf("%s", output.String())
 }

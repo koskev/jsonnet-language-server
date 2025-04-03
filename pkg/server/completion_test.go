@@ -1008,6 +1008,44 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "function import call 1",
+			filename:        "./testdata/complete/import/functionimport.jsonnet",
+			replaceString:   "key1: funcArg.key1.number1,",
+			replaceByString: "key1: funcArg.key1.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "number1",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "number1",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "function import call 2",
+			filename:        "./testdata/complete/import/functionimport.jsonnet",
+			replaceString:   "key1: funcArg.key1.number1,",
+			replaceByString: "key1: funcArg.key2.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "number2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "number2",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1015,7 +1053,7 @@ func TestCompletion(t *testing.T) {
 			require.NoError(t, err)
 
 			server, fileURI := testServerWithFile(t, completionTestStdlib, string(content))
-			server.configuration.JPaths = []string{"testdata"}
+			server.configuration.JPaths = []string{"testdata", "testdata/complete", "testdata/complete/import"}
 			server.configuration.ExtCode = map[string]string{
 				"code": "{ objA: 5, ['%s' % 'computed']: 3}",
 			}
