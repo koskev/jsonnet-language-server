@@ -745,7 +745,7 @@ func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, po
 		}
 		for _, bind := range binds {
 			label := string(bind.Variable)
-			if strings.HasPrefix(label, indexes[0]) && label != "$" {
+			if strings.HasPrefix(label, indexes[0]) && label != "$" && (!strings.HasPrefix(label, "#") || !s.configuration.ShowDocstringInCompletion) {
 				items = append(items, createCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos))
 			}
 		}
