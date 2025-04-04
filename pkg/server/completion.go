@@ -579,11 +579,38 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 					return s.getDesugaredObject(callstack, documentstack)
 				}
 			}
+		case *ast.Conditional:
+			resolved, err := s.resolveConditional(currentNode)
+			if err != nil {
+				log.Errorf("Failed to resolve conditional: %v", err)
+			}
+			searchstack.Push(resolved)
+
 		default:
 			log.Errorf("Unhandled type in getDesugaredObject: %v", reflect.TypeOf(currentNode))
 		}
 	}
 	return mergeDesugaredObjects(desugaredObjects)
+}
+
+func (s *Server) resolveConditional(node *ast.Conditional) (ast.Node, error) {
+	vm, root, err := s.getAst(node.Loc().FileName, "")
+	if err != nil {
+		return nil, err
+	}
+	processor := processing.NewProcessor(s.cache, vm)
+	compiled, err := processor.CompileNode(root, node.Cond)
+	if err != nil {
+		return nil, err
+	}
+	result, ok := compiled.(*ast.LiteralBoolean)
+	if !ok {
+		return nil, fmt.Errorf("node did not compile to literal boolean. Got %T", compiled)
+	}
+	if result.Value {
+		return node.BranchTrue, nil
+	}
+	return node.BranchFalse, nil
 }
 
 // a.b.c(arg).d.e
@@ -613,7 +640,6 @@ stackLoop:
 			log.Errorf("UNHANDLED APPLY!")
 		// Search the current DesugaredObject and get the body for this index
 		case *ast.Index:
-			// TODO: special case if apply
 			// TODO: get sub
 			// TODO: keep local binds. Just push the parent object to the stack?
 			// log.Errorf("Call node %+v", callNode)

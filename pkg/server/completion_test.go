@@ -1138,6 +1138,33 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "conditional from local",
+			filename:        "./testdata/complete/conditional.jsonnet",
+			replaceString:   "a: myCondLocal(),",
+			replaceByString: "a: myCondLocal().",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "base",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "base",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "trueField",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "trueField",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "boolean",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
