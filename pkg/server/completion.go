@@ -490,14 +490,18 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				log.Errorf("#### Local %v", reflect.TypeOf(currentNode.Body))
 				documentstack.Push(currentNode.Body)
 				obj := s.buildDesugaredObject(documentstack)
-				searchstack.Push(obj)
+				if obj != nil {
+					searchstack.Push(obj)
+				}
 			}
 		// There might be indices in imports
 		case *ast.Index:
 
 			log.Errorf("Index with name %v", currentNode.Index)
 			obj := s.buildDesugaredObject(documentstack)
-			searchstack.Push(obj)
+			if obj != nil {
+				searchstack.Push(obj)
+			}
 
 		case *ast.Binary:
 			searchstack.Push(currentNode.Right)
