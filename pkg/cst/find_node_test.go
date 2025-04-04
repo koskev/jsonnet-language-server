@@ -85,7 +85,7 @@ var testCases = []CstNodeTestCase{
 			},
 		},
 	},
-	//{
+	// {
 	//	name:            "Global from array",
 	//	filename:        "./testdata/object.jsonnet",
 	//	replaceString:   "myObj.key,",
@@ -98,7 +98,7 @@ var testCases = []CstNodeTestCase{
 	//			EndPoint:   tree_sitter.NewPoint(3, 7),
 	//		},
 	//	},
-	//},
+	// },
 	{
 		name:            "Simple object from func",
 		filename:        "./testdata/func.jsonnet",
@@ -113,7 +113,7 @@ var testCases = []CstNodeTestCase{
 			},
 		},
 	},
-	//{
+	// {
 	//	name:            "Object function from dot",
 	//	filename:        "./testdata/nested_object_func.jsonnet",
 	//	replaceString:   "myObj.objFunc(5).funcKey",
@@ -125,7 +125,7 @@ var testCases = []CstNodeTestCase{
 	//			EndPoint:   tree_sitter.NewPoint(3, 7),
 	//		},
 	//	},
-	//},
+	// },
 }
 
 func TestCSTNode(t *testing.T) {
@@ -150,9 +150,9 @@ func TestCSTNode(t *testing.T) {
 			}
 			// This is worse than rust...
 			cursorPosition.Character = min(uint32(int64(cursorPosition.Character)+int64(tc.completionOffset)), cursorPosition.Character)
-			//if cursorPosition.Character == 0 {
+			// if cursorPosition.Character == 0 {
 			//	t.Fatal(fmt.Sprintf("Could not find cursor position for test. Replace probably didn't work: %+v", cursorPosition))
-			//}
+			// }
 
 			require.NoError(t, err)
 			found, err := FindCompletionNode(ctx, replacedContent, cursorPosition)
@@ -160,7 +160,7 @@ func TestCSTNode(t *testing.T) {
 			require.NotNil(t, found.Node)
 			assert.Equal(t, string(tc.expected.nodeType), found.Node.GrammarName())
 			assert.Equal(t, tc.expected.nodeRange.StartPoint, found.Node.Range().StartPoint)
-			//assert.Equal(t, tc.expected.nodeRange.EndPoint, found.node.Range().EndPoint)
+			// assert.Equal(t, tc.expected.nodeRange.EndPoint, found.node.Range().EndPoint)
 		})
 	}
 }

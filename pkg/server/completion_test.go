@@ -1119,6 +1119,25 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "nested object with function calls",
+			filename:        "./testdata/complete/functionargsnested.jsonnet",
+			replaceString:   "a: localfunc(arg=data).funcBody.nested1.nested2Func().nested3.nested4Func(data2).nested5.nested2data.nested2data2,",
+			replaceByString: "a: localfunc(arg=data).funcBody.nested1.nested2Func().nested3.nested4Func(data2).nested5.nested2data.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "nested2data2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "nested2data2",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

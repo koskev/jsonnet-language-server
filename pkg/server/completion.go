@@ -631,25 +631,24 @@ stackLoop:
 					continue
 				}
 				if indexName.Value == fieldName.Value {
-					// TODO: member body might have function -> Bind stuff to stack and resolve object
-					// TODO: currently not working due to wrong injected target -> var but should be apply
-					// TODO SO: Maybe modify apply and add function as target and call getDesugaredObject
-					//funcNode, funcOk := field.Body.(*ast.Function)
-					//applyNode, applyOk := callstack.Peek().(*ast.Apply)
-					//var newDesugar *ast.DesugaredObject
-					//log.Errorf("Apply func %v %v", applyOk, funcOk)
-					//if applyOk && funcOk {
-					//	// Pop the apply Node
-					//	callstack.Pop()
-					//	stack := s.addFunctionToStack(applyNode, funcNode, documentstack)
-					//	if stack != nil {
-					//		documentstack.Stack = append(documentstack.Stack, stack.Stack...)
-					//	}
-					//	newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(stack.Peek()), documentstack)
-					//} else {
-					log.Errorf("Found field %s", indexName.Value)
-					newDesugar := s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
-					//}
+					// member body might have function -> Bind stuff to stack and resolve object
+					// TODO: Maybe modify apply and add function as target and call getDesugaredObject. I'd like to have all logic in one function
+					funcNode, funcOk := field.Body.(*ast.Function)
+					applyNode, applyOk := callstack.Peek().(*ast.Apply)
+					var newDesugar *ast.DesugaredObject
+					log.Errorf("Apply func %v %v", applyOk, funcOk)
+					if applyOk && funcOk {
+						// Pop the apply Node
+						callstack.Pop()
+						stack := s.addFunctionToStack(applyNode, funcNode, documentstack)
+						if stack != nil {
+							documentstack.Stack = append(documentstack.Stack, stack.Stack...)
+						}
+						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(stack.Peek()), documentstack)
+					} else {
+						log.Errorf("Found field %s", indexName.Value)
+						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
+					}
 					if newDesugar != nil {
 						//if newDesugar, ok := field.Body.(*ast.DesugaredObject); ok {
 						baseObject = newDesugar
