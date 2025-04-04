@@ -44,7 +44,7 @@ func positionToIndex(content string, pos protocol.Position) int {
 
 func getCurrentIndex(content string, pos protocol.Position) string {
 	whitespace := []rune{' ', '\n', '\t'}
-	endingTokens := []rune{':', ',', ';', '(', '=', '['}
+	endingTokens := []rune{':', ',', ';', '(', '=', '[', '+'}
 
 	// We want the position before the cursor
 	currentPos := max(0, positionToIndex(content, pos)-1)

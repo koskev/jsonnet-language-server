@@ -1046,6 +1046,79 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "function call body global complete",
+			filename:        "./testdata/complete/function/funcbody.libsonnet",
+			replaceString:   "{}",
+			replaceByString: "{} + ",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "functionarg",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "functionarg",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "var",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "var",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "function call body global complete without space",
+			filename:        "./testdata/complete/function/funcbody.libsonnet",
+			replaceString:   "{}",
+			replaceByString: "{}+",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "functionarg",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "functionarg",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "var",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "var",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "function call body var body",
+			filename:        "./testdata/complete/function/funcbody.libsonnet",
+			replaceString:   "{}",
+			replaceByString: "{} + var.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "varKey",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "varKey",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
