@@ -121,7 +121,7 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	}
 
 	// Inside an Object the node is an error if it ends in a dot
-	//if IsNode(found, NodeError) {
+	// if IsNode(found, NodeError) {
 	//	fieldAccessNode := found.PrevSibling()
 	//	if fieldAccessNode == nil {
 	//		return nil, fmt.Errorf("access node is nil")
@@ -149,7 +149,7 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	//		return nil, fmt.Errorf("no access node found")
 	//	}
 	//	found = GetNonSymbolNode(GetLastChild(fieldAccessNode))
-	//}
+	// }
 	info.Node = found
 	log.Errorf("Found end: %+v", found.GrammarName())
 

@@ -371,6 +371,11 @@ searchLoop:
 	return objectStack
 }
 
+func compareSelf(selfNode ast.Node, other ast.Node) bool {
+	selfType := reflect.TypeFor[*ast.Self]()
+	return reflect.TypeOf(selfNode) == selfType && reflect.TypeOf(other) == selfType && selfNode.Context() == other.Context()
+}
+
 // TODO: handle appply in this function
 // Just add the apply node to the documentstack
 // Then on function search for the apply node and add the variables to the stack
@@ -439,18 +444,36 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			}
 		case *ast.Self:
 			// Search for next DesugaredObject
-			for !documentstack.IsEmpty() {
-				log.Errorf("DOC SELF %v", reflect.TypeOf(documentstack.Peek()))
-				if desugared, ok := documentstack.Pop().(*ast.DesugaredObject); ok {
-					log.Errorf("Next in stack: %v", reflect.TypeOf(documentstack.Peek()))
-					if bin, ok := documentstack.Pop().(*ast.Binary); ok {
-						searchstack.Push(bin)
-					} else {
-						return desugared
-						// searchstack.Push(desugared)
-					}
-				}
+			selfObject, pos, err := documentstack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
+			if err != nil {
+				log.Errorf("Unable to find self object: %v", err)
+				continue
 			}
+			// Self refers to the next desugared object resolving all binaries: {a:1} + {b: self.a, c: self.d} + {d:2}
+			// Super only refers to the "upper" binaries: {a:1} + {b: super.a, c: self.d} + {d:2}
+
+			// TODO: for self find all binaries in a row
+			// TODO: find binaries after the current one
+			binNode, binaryPos, err := documentstack.FindNextFromIndex(reflect.TypeFor[*ast.Binary](), pos)
+			searchstack.Push(selfObject)
+			if err != nil {
+				// No binary
+				continue
+			}
+			// Self refers to a binary
+			//nolint:forcetypeassert // go shit
+			binary := binNode.(*ast.Binary)
+			switch {
+			case compareSelf(currentNode, binary.Left):
+				searchstack.Push(binary.Right)
+			case compareSelf(currentNode, binary.Right):
+				searchstack.Push(binary.Left)
+			case pos-1 == binaryPos:
+				// Direct parent
+				searchstack.Push(binary.Right)
+				searchstack.Push(binary.Left)
+			}
+
 		case *ast.Import:
 			log.Errorf("Trying to import %s from %s", currentNode.File.Value, currentNode.LocRange.FileName)
 			_, imported, err := s.getAst(currentNode.File.Value, currentNode.LocRange.FileName)
@@ -538,7 +561,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// }
 		case *ast.Function:
 			// Find apply node on documentstack
-			foundNode, err := documentstack.FindNext(reflect.TypeFor[*ast.Apply]())
+			foundNode, _, err := documentstack.FindNext(reflect.TypeFor[*ast.Apply]())
 			if err != nil {
 				log.Errorf("Unable to find apply node in document stack. Size %d", len(documentstack.Stack))
 				continue
@@ -590,7 +613,11 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			log.Errorf("Unhandled type in getDesugaredObject: %v", reflect.TypeOf(currentNode))
 		}
 	}
-	return mergeDesugaredObjects(desugaredObjects)
+	merged := mergeDesugaredObjects(desugaredObjects)
+	if merged != nil {
+		documentstack.Push(merged)
+	}
+	return merged
 }
 
 func (s *Server) resolveConditional(node *ast.Conditional) (ast.Node, error) {

@@ -76,18 +76,22 @@ func (s *NodeStack) IsEmpty() bool {
 }
 
 // RLY GO!? No member generics??? I thought you didn't have classes and this is just sugar for func(self, x, y)?!?
-func (s *NodeStack) FindNext(nodeType reflect.Type) (ast.Node, error) {
+func (s *NodeStack) FindNext(nodeType reflect.Type) (ast.Node, int, error) {
+	return s.FindNextFromIndex(nodeType, len(s.Stack)-1)
+}
+
+// Finds the next type going from index to 0
+func (s *NodeStack) FindNextFromIndex(nodeType reflect.Type, index int) (ast.Node, int, error) {
+	if len(s.Stack)-1 < index || index < 0 {
+		return nil, 0, fmt.Errorf("invalid index %d. Max %d", index, len(s.Stack)-1)
+	}
 	// RLY GO? No proper iterators!?
-	for i := range s.Stack {
-		logrus.Errorf("Type %v", reflect.TypeOf(s.Stack[i]))
-		// Stupid reverse index due to go being an incomplete language
-		i = len(s.Stack) - 1 - i
+	for i := index; i >= 0; i-- {
 		if reflect.TypeOf(s.Stack[i]) == nodeType {
-			return s.Stack[i], nil
+			return s.Stack[i], i, nil
 		}
 	}
-	// GIVE AN OPTION TYPE!
-	return nil, fmt.Errorf("no node found")
+	return nil, 0, fmt.Errorf("no node found")
 }
 
 func (s *NodeStack) BuildIndexList() []string {

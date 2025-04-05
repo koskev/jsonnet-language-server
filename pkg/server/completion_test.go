@@ -1165,6 +1165,83 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		// --- Builder Pattern ---
+		{
+			name:            "builder pattern simple",
+			filename:        "./testdata/builder-pattern.jsonnet",
+			replaceString:   "test: self.util.new().withAttr('hello').withAttr2('world').build(),",
+			replaceByString: "test: self.util.new().withAttr('hello').b",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "build",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "builder pattern this",
+			filename:        "./testdata/builder-pattern.jsonnet",
+			replaceString:   "test: self.util.new().withAttr('hello').withAttr2('world').build(),",
+			replaceByString: "test: self.util.new().withAttr2('hello').b",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "build",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "builder pattern chained",
+			filename:        "./testdata/builder-pattern.jsonnet",
+			replaceString:   "test: self.util.new().withAttr('hello').withAttr2('world').build(),",
+			replaceByString: "test: self.util.new().withAttr('hello').withAttr('world').b",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "build",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "builder pattern argument",
+			filename:        "./testdata/builder-pattern.jsonnet",
+			replaceString:   "test: self.util.new().withAttr('hello').withAttr2('world').build(),",
+			replaceByString: "test: self.util.new().withAttr({myKey: 5}).attr.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "myKey",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "myKey",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
