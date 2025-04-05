@@ -2,7 +2,6 @@ package cst
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"strings"
 
@@ -122,35 +121,35 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	}
 
 	// Inside an Object the node is an error if it ends in a dot
-	if IsNode(found, NodeError) {
-		fieldAccessNode := found.PrevSibling()
-		if fieldAccessNode == nil {
-			return nil, fmt.Errorf("access node is nil")
-		}
-		log.Errorf("Node id %v (%v)", fieldAccessNode.GrammarName(), fieldAccessNode.GrammarId())
-		switch fieldAccessNode.GrammarName() {
-		case NodeBind:
-			fieldAccessNode = GetLastChild(fieldAccessNode)
-		case NodeFunctionCall:
+	//if IsNode(found, NodeError) {
+	//	fieldAccessNode := found.PrevSibling()
+	//	if fieldAccessNode == nil {
+	//		return nil, fmt.Errorf("access node is nil")
+	//	}
+	//	log.Errorf("Node id %v (%v)", fieldAccessNode.GrammarName(), fieldAccessNode.GrammarId())
+	//	switch fieldAccessNode.GrammarName() {
+	//	case NodeBind:
+	//		fieldAccessNode = GetLastChild(fieldAccessNode)
+	//	case NodeFunctionCall:
 
-			acc, err := GetFirstChildType(fieldAccessNode, NodeFieldAccess)
-			if err != nil {
-				return nil, err
-			}
-			fieldAccessNode = GetLastChild(acc)
-		case NodeParenthesis:
-			// TODO: probably more cases here
-			fieldAccessNode, err = GetFirstChildType(fieldAccessNode, NodeImport)
-			if err != nil {
-				return nil, err
-			}
-		}
-		// fieldAccessNode, err := GetFirstChildType(sibling, NodeFieldAccess)
-		if fieldAccessNode == nil {
-			return nil, fmt.Errorf("no access node found")
-		}
-		found = GetNonSymbolNode(GetLastChild(fieldAccessNode))
-	}
+	//		acc, err := GetFirstChildType(fieldAccessNode, NodeFieldAccess)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//		fieldAccessNode = GetLastChild(acc)
+	//	case NodeParenthesis:
+	//		// TODO: probably more cases here
+	//		fieldAccessNode, err = GetFirstChildType(fieldAccessNode, NodeImport)
+	//		if err != nil {
+	//			return nil, err
+	//		}
+	//	}
+	//	// fieldAccessNode, err := GetFirstChildType(sibling, NodeFieldAccess)
+	//	if fieldAccessNode == nil {
+	//		return nil, fmt.Errorf("no access node found")
+	//	}
+	//	found = GetNonSymbolNode(GetLastChild(fieldAccessNode))
+	//}
 	info.Node = found
 	log.Errorf("Found end: %+v", found.GrammarName())
 
