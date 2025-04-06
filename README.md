@@ -27,11 +27,12 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
       * Builder pattern (if there is only one binary)
     * Complete imports from all jpaths
     * Complete import function calls (import 'a.libsonnet')("myArg").val
+    * Support super completion
+    * Complete keywords (super, self, local)
   * Basic automatic ast fix
   * Completing conditionals (function argument conditions are still TODO)
 
 ### TODO
- * Proper self in binary support (currently only one level supported)
  * Support completing conditionals
  * Refactor/Cleanup new features
  * Original Bugs

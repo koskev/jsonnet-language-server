@@ -474,6 +474,32 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				searchstack.Push(binary.Left)
 			}
 
+		case *ast.SuperIndex:
+			// Search for next DesugaredObject
+			selfObject, pos, err := documentstack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
+			if err != nil {
+				log.Errorf("Unable to find self object: %v", err)
+				continue
+			}
+			// Self refers to the next desugared object resolving all binaries: {a:1} + {b: self.a, c: self.d} + {d:2}
+			// Super only refers to the "upper" binaries: {a:1} + {b: super.a, c: self.d} + {d:2}
+
+			// This resolves all binaries "above"
+			binNode, binaryPos, err := documentstack.FindNextFromIndex(reflect.TypeFor[*ast.Binary](), pos)
+			searchstack.Push(selfObject)
+			if err != nil {
+				// No binary
+				continue
+			}
+			// Self refers to a binary
+			//nolint:forcetypeassert // go shit
+			binary := binNode.(*ast.Binary)
+			if pos-1 == binaryPos {
+				// Direct parent
+				searchstack.Push(binary.Right)
+				searchstack.Push(binary.Left)
+			}
+
 		case *ast.Import:
 			log.Errorf("Trying to import %s from %s", currentNode.File.Value, currentNode.LocRange.FileName)
 			_, imported, err := s.getAst(currentNode.File.Value, currentNode.LocRange.FileName)
@@ -885,6 +911,7 @@ func formatLabel(str string) string {
 	return ret
 }
 
+//nolint:unparam // Currently prefix is always called with ""
 func createCompletionItem(label, prefix string, kind protocol.CompletionItemKind, body ast.Node, position protocol.Position, tryEscape bool) protocol.CompletionItem {
 	paramsString := ""
 	if asFunc, ok := body.(*ast.Function); ok {
