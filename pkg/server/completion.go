@@ -763,7 +763,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		if nameNode, ok := field.Name.(*ast.LiteralString); ok {
 			if strings.HasPrefix(nameNode.Value, indexName) {
 				items = append(items,
-					createCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos),
+					createCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
 				)
 			}
 		}
@@ -783,6 +783,10 @@ func getCompletionLine(fileContent string, position protocol.Position) string {
 func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
 	log.Tracef("##### Global path")
 	items := []protocol.CompletionItem{}
+	addSelf := false
+	addSuper := false
+	// TODO: determine when we can add a local
+	addLocal := true
 	// firstIndex is a variable (local) completion
 	for !stack.IsEmpty() {
 		curr := stack.Pop()
@@ -790,23 +794,47 @@ func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, po
 		switch typedCurr := curr.(type) {
 		case *ast.DesugaredObject:
 			binds = typedCurr.Locals
+			addSelf = true
+			parentNode, _, err := stack.FindNext(reflect.TypeFor[*ast.Binary]())
+			if err != nil {
+				continue
+			}
+			//nolint:forcetypeassert // go stuff
+			parentBinary := parentNode.(*ast.Binary)
+			addSuper = parentBinary.Right == curr
+
 		case *ast.Local:
 			binds = typedCurr.Binds
 		case *ast.Function:
 			for _, param := range typedCurr.Parameters {
-				items = append(items, createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos))
+				items = append(items, createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
 			}
 		default:
 			continue
 		}
 		for _, bind := range binds {
 			label := string(bind.Variable)
-			if strings.HasPrefix(label, indexes[0]) && label != "$" && (!strings.HasPrefix(label, "#") || !s.configuration.ShowDocstringInCompletion) {
-				items = append(items, createCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos))
-			}
+			items = append(items, createCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
 		}
 	}
-	return items
+	if addSelf {
+		items = append(items, createCompletionItem("self", "", protocol.VariableCompletion, &ast.Self{}, pos, false))
+	}
+	if addSuper {
+		items = append(items, createCompletionItem("super", "", protocol.VariableCompletion, &ast.SuperIndex{}, pos, false))
+	}
+	if addLocal {
+		items = append(items, createCompletionItem("local", "", protocol.VariableCompletion, &ast.Local{}, pos, false))
+	}
+
+	filteredItems := []protocol.CompletionItem{}
+	for _, item := range items {
+		if strings.HasPrefix(item.Label, indexes[0]) && item.Label != "$" && (!strings.HasPrefix(item.Label, "#") || !s.configuration.ShowDocstringInCompletion) {
+			filteredItems = append(filteredItems, item)
+		}
+	}
+
+	return filteredItems
 }
 
 func (s *Server) completionStdLib(line string) []protocol.CompletionItem {
@@ -857,7 +885,7 @@ func formatLabel(str string) string {
 	return ret
 }
 
-func createCompletionItem(label, prefix string, kind protocol.CompletionItemKind, body ast.Node, position protocol.Position) protocol.CompletionItem {
+func createCompletionItem(label, prefix string, kind protocol.CompletionItemKind, body ast.Node, position protocol.Position, tryEscape bool) protocol.CompletionItem {
 	paramsString := ""
 	if asFunc, ok := body.(*ast.Function); ok {
 		kind = protocol.FunctionCompletion
@@ -868,7 +896,12 @@ func createCompletionItem(label, prefix string, kind protocol.CompletionItemKind
 		paramsString = "(" + strings.Join(params, ", ") + ")"
 	}
 
-	insertText := formatLabel("['" + label + "']" + paramsString)
+	var insertText string
+	if tryEscape {
+		insertText = formatLabel("['" + label + "']" + paramsString)
+	} else {
+		insertText = label
+	}
 
 	concat := ""
 	characterStartPosition := position.Character - 1
@@ -932,6 +965,12 @@ func typeToString(t ast.Node) string {
 		return "object field"
 	case *ast.Var:
 		return "variable"
+	case *ast.SuperIndex:
+		return "super"
 	}
-	return reflect.TypeOf(t).String()
+	typeString := reflect.TypeOf(t).String()
+	typeString = strings.ReplaceAll(typeString, "*ast.", "")
+	typeString = strings.ToLower(typeString)
+
+	return typeString
 }

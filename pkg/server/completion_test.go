@@ -176,7 +176,7 @@ func TestCompletion(t *testing.T) {
 						Detail:     "message",
 						InsertText: "message",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "*ast.Self",
+							Description: "self",
 						},
 					},
 				},
@@ -225,7 +225,7 @@ func TestCompletion(t *testing.T) {
 						Detail:     "self.bar",
 						InsertText: "bar",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "*ast.Self",
+							Description: "self",
 						},
 					},
 					{
@@ -264,6 +264,30 @@ func TestCompletion(t *testing.T) {
 						InsertText: "somevar",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
+						},
+					},
+					{
+						Label:      "self",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "self",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "self",
+						},
+					},
+					{
+						Label:      "super",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "super",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "super",
+						},
+					},
+					{
+						Label:      "local",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "local",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "local",
 						},
 					},
 				},
@@ -783,7 +807,7 @@ func TestCompletion(t *testing.T) {
 						Detail:     "self.test",
 						InsertText: "test",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "*ast.Apply",
+							Description: "apply",
 						},
 					},
 				},
@@ -1070,6 +1094,14 @@ func TestCompletion(t *testing.T) {
 							Description: "object",
 						},
 					},
+					{
+						Label:      "local",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "local",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "local",
+						},
+					},
 				},
 			},
 		},
@@ -1095,6 +1127,14 @@ func TestCompletion(t *testing.T) {
 						InsertText: "var",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
+						},
+					},
+					{
+						Label:      "local",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "local",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "local",
 						},
 					},
 				},
@@ -1237,6 +1277,64 @@ func TestCompletion(t *testing.T) {
 						InsertText: "myKey",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "number",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "self global outside of object",
+			filename:        "./testdata/complete/keywords/self.jsonnet",
+			replaceString:   "local myVar = 5;",
+			replaceByString: "local myVar = s",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items:        []protocol.CompletionItem{},
+			},
+		},
+		{
+			name:            "self global inside of object",
+			filename:        "./testdata/complete/keywords/self.jsonnet",
+			replaceString:   "keyA: 4",
+			replaceByString: "keyA: s",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "self",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "self",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "self",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "super global without base",
+			filename:        "./testdata/complete/keywords/self.jsonnet",
+			replaceString:   "keyA: 4",
+			replaceByString: "keyA: su",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items:        []protocol.CompletionItem{},
+			},
+		},
+		{
+			name:            "super global with base",
+			filename:        "./testdata/complete/keywords/super.jsonnet",
+			replaceString:   "keyA: 4",
+			replaceByString: "keyA: su",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "super",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "super",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "super",
 						},
 					},
 				},

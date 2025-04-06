@@ -34,6 +34,8 @@ type Configuration struct {
 	ShowDocstringInCompletion bool
 	MaxInlayLength            int
 	Inlay                     ConfigurationInlay
+	// Evaluates conditionals instead of just adding both
+	EvaluateConditionals bool
 }
 
 func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidChangeConfigurationParams) error {
