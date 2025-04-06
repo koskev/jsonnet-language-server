@@ -1376,6 +1376,50 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "self object below",
+			filename:        "./testdata/complete/selfbinary.jsonnet",
+			replaceString:   "thirdObj:: 3,",
+			replaceByString: "thirdObj:: self.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "firstObj",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "firstObj",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "fourthObj",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "fourthObj",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "secondObj",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "secondObj",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					// TODO: loop
+					{
+						Label:      "thirdObj",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "thirdObj",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "self",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

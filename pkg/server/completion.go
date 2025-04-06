@@ -452,26 +452,34 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// Self refers to the next desugared object resolving all binaries: {a:1} + {b: self.a, c: self.d} + {d:2}
 			// Super only refers to the "upper" binaries: {a:1} + {b: super.a, c: self.d} + {d:2}
 
-			// TODO: for self find all binaries in a row
 			// TODO: find binaries after the current one
-			binNode, binaryPos, err := documentstack.FindNextFromIndex(reflect.TypeFor[*ast.Binary](), pos)
-			searchstack.Push(selfObject)
-			if err != nil {
+			// Find top most binary and flatten it
+			var binary *ast.Binary
+			for {
+				binNode, binaryPos, err := documentstack.FindNextFromIndex(reflect.TypeFor[*ast.Binary](), pos-1)
+				if err != nil {
+					break
+				}
+				if pos-1 != binaryPos {
+					log.Errorf("Pos not matching %+v binpos %+v", pos, binaryPos)
+					break
+				}
+				log.Errorf("Found new binary")
+				//nolint:forcetypeassert // go shit
+				binary = binNode.(*ast.Binary)
+				pos = binaryPos
+			}
+			if binary == nil {
+				searchstack.Push(selfObject)
 				// No binary
 				continue
 			}
-			// Self refers to a binary
-			//nolint:forcetypeassert // go shit
-			binary := binNode.(*ast.Binary)
-			switch {
-			case compareSelf(currentNode, binary.Left):
-				searchstack.Push(binary.Right)
-			case compareSelf(currentNode, binary.Right):
-				searchstack.Push(binary.Left)
-			case pos-1 == binaryPos:
-				// Direct parent
-				searchstack.Push(binary.Right)
-				searchstack.Push(binary.Left)
+			binaryChildren := processing.FlattenBinary(binary)
+			// Add all children except the self target
+			for _, child := range binaryChildren {
+				if !compareSelf(currentNode, child) {
+					searchstack.Push(child)
+				}
 			}
 
 		case *ast.SuperIndex:

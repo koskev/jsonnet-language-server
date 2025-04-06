@@ -24,16 +24,15 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
     * Supports newlines and spaces completion
     * Completes returns of functions
       * e.g. myFunc({val: 5}).argVal.val
-      * Builder pattern (if there is only one binary)
+      * Builder pattern
     * Complete imports from all jpaths
     * Complete import function calls (import 'a.libsonnet')("myArg").val
     * Support super completion
     * Complete keywords (super, self, local)
+    * Completing conditionals (function argument conditions are still TODO)
   * Basic automatic ast fix
-  * Completing conditionals (function argument conditions are still TODO)
 
 ### TODO
- * Support completing conditionals
  * Refactor/Cleanup new features
  * Original Bugs
     * Broken go to for dollar inside locals

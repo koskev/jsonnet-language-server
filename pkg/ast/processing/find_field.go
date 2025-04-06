@@ -188,7 +188,7 @@ func (p *Processor) extractObjectRangesFromDesugaredObjs(desugaredObjs []*ast.De
 				newObjs := p.FindTopLevelObjectsInFile(filename, string(fieldNode.Loc().File.DiagnosticFileName))
 				desugaredObjs = append(desugaredObjs, newObjs...)
 			case *ast.Binary:
-				fieldNodes = append(fieldNodes, flattenBinary(fieldNode)...)
+				fieldNodes = append(fieldNodes, FlattenBinary(fieldNode)...)
 			case *ast.Self:
 				desugaredObjs = append(desugaredObjs, p.findSelfObject(fieldNode))
 			}
@@ -198,12 +198,12 @@ func (p *Processor) extractObjectRangesFromDesugaredObjs(desugaredObjs []*ast.De
 	return ranges, nil
 }
 
-func flattenBinary(node ast.Node) []ast.Node {
+func FlattenBinary(node ast.Node) []ast.Node {
 	binary, nodeIsBinary := node.(*ast.Binary)
 	if !nodeIsBinary {
 		return []ast.Node{node}
 	}
-	return append(flattenBinary(binary.Right), flattenBinary(binary.Left)...)
+	return append(FlattenBinary(binary.Right), FlattenBinary(binary.Left)...)
 }
 
 // unpackFieldNodes extracts nodes from fields
@@ -216,7 +216,7 @@ func (p *Processor) unpackFieldNodes(fields []*ast.DesugaredObjectField) []ast.N
 		case *ast.Self:
 			fieldNodes = append(fieldNodes, p.findSelfObject(fieldNode))
 		case *ast.Binary:
-			fieldNodes = append(fieldNodes, flattenBinary(fieldNode)...)
+			fieldNodes = append(fieldNodes, FlattenBinary(fieldNode)...)
 		default:
 			fieldNodes = append(fieldNodes, fieldNode)
 		}
