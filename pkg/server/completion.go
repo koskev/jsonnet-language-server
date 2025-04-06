@@ -9,7 +9,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
 	"github.com/google/go-jsonnet/formatter"
 	"github.com/grafana/jsonnet-language-server/pkg/ast/processing"
@@ -200,17 +199,19 @@ stackLoop:
 			//nolint:goconst
 			if len(indexList) > 0 && (indexList[0] == "std" || indexList[0] == "$std") {
 				// Special case: Call std function
-				evalResult, _ := s.getVM(currentNode.LocRange.FileName).Evaluate(currentNode)
-				node, err := jsonnet.SnippetToAST("", evalResult)
-				if err == nil {
-					searchstack.Push(node)
-					if desugar, ok := node.(*ast.DesugaredObject); ok {
-						log.Errorf("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
-					}
-					log.Errorf("Compiled! %+v", reflect.TypeOf(node))
-					return searchstack
+				vm, root, err := s.getAst(currentNode.Loc().FileName, "")
+				if err != nil {
+					log.Errorf("%v", err)
+					continue
 				}
-				log.Errorf("Failed to compile node %v", err)
+				processor := processing.NewProcessor(s.cache, vm)
+				compiled, err := processor.CompileNode(root, currentNode)
+				if err != nil {
+					log.Errorf("Failed to compile node %v", err)
+					continue
+				}
+				searchstack.Push(compiled)
+				continue
 			}
 			log.Errorf("FUNC TARGET %v", reflect.TypeOf(currentNode.Target))
 			searchstack.Push(currentNode.Target)
@@ -399,31 +400,6 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			log.Errorf("#Var %v", currentNode.Id)
 			log.Errorf("next search %v", reflect.TypeOf(callstack.Peek()))
 			switch currentNode.Id {
-			case "std", "$std":
-				// TODO: Do we even need this? Seems like the one at the apply is enough
-				indexList := searchstack.Clone().BuildIndexList()
-				log.Errorf("var indexList: %v", indexList)
-				callstack.PrintStack()
-				toCompileNode := callstack.PeekFront()
-				log.Errorf("STD CALL %T", toCompileNode)
-				evalResult, err := s.getVM(toCompileNode.Loc().FileName).Evaluate(toCompileNode)
-				if err != nil {
-					log.Errorf("evaluating node: %v", err)
-					continue
-				}
-				node, err := jsonnet.SnippetToAST("", evalResult)
-				if err != nil {
-					log.Errorf("Failed to compile node %v", err)
-				}
-				searchstack.Push(node)
-				if desugar, ok := node.(*ast.DesugaredObject); ok {
-					log.Errorf("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
-				}
-				log.Errorf("Compiled! %+v", reflect.TypeOf(node))
-				// newstack := s.ResolveApplyArguments(nodestack.NewNodeStack(callstack.PeekFront()), documentstack)
-				// if newstack != nil {
-				//	searchstack = newstack
-				// }
 			case "$":
 				// XXX: Dollar is a node and not ast.Dollar. For whatever reason
 				searchstack.Push(&ast.Dollar{NodeBase: currentNode.NodeBase})
@@ -571,28 +547,30 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// TODO: special case if var is std -> evaluate // TODO: hidden objects?
 			if len(indexList) > 0 && (indexList[0] == "std" || indexList[0] == "$std") {
 				// Special case: Call std function
-				evalResult, _ := s.getVM(currentNode.LocRange.FileName).Evaluate(currentNode)
-				node, err := jsonnet.SnippetToAST(currentNode.LocRange.FileName, evalResult)
-				if err == nil {
-					searchstack.Push(node)
-					if desugar, ok := node.(*ast.DesugaredObject); ok {
-						log.Errorf("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
-					}
-					log.Errorf("Compiled! %+v", reflect.TypeOf(node))
+				// Find the filename since not all nodes have it
+				filename := currentNode.Loc().FileName
+				for i := len(documentstack.Stack) - 1; i >= 0 && len(filename) == 0; i-- {
+					filename = documentstack.Stack[i].Loc().FileName
+				}
+				vm, root, err := s.getAst(filename, "")
+				if err != nil {
+					log.Errorf("Getting vm %v %+v", err, currentNode.Loc())
 					continue
 				}
-				log.Errorf("Failed to compile node %v", err)
+				processor := processing.NewProcessor(s.cache, vm)
+				compiled, err := processor.CompileNode(root, currentNode)
+				if err != nil {
+					log.Errorf("Failed to compile node %v", err)
+					continue
+				}
+				searchstack.Push(compiled)
+				if desugar, ok := compiled.(*ast.DesugaredObject); ok {
+					log.Errorf("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
+				}
+				log.Errorf("Compiled! %+v", reflect.TypeOf(compiled))
+				continue
 			}
 			searchstack.Push(currentNode.Target)
-			// tempstack := searchstack.Clone()
-			//// push the apply on the stack again to resolve the arguments
-			// tempstack.Push(currentNode)
-			// applystack := s.ResolveApplyArguments(tempstack, documentstack)
-			// if applystack != nil {
-			//	// TODO: this might be wrong and we (also) need the documentstack? too tired right now
-			//	searchstack = applystack
-			//	log.Errorf("New search stack %v", searchstack)
-			// }
 		case *ast.Function:
 			// Find apply node on documentstack
 			foundNode, _, err := documentstack.FindNext(reflect.TypeFor[*ast.Apply]())

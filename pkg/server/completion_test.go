@@ -994,6 +994,35 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
+			name:            "completion for in object var",
+			filename:        "./testdata/complete/forobj.jsonnet",
+			replaceString:   "a: forObj.one,",
+			replaceByString: "a: forVar.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "one",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "forObj.one",
+						InsertText: "one",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+					{
+						Label:      "two",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "forObj.two",
+						InsertText: "two",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:            "completion with arg value",
 			filename:        "./testdata/complete/functionbody.jsonnet",
 			replaceString:   "a: myFunc(exampleArg).field,",

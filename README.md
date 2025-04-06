@@ -19,9 +19,9 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
     * Infinite loops
     * Completion with named args and objects without a space
     * Binary Object completion
-    * Complete simple for objects (hardcoded values only for now)
   * Complete rework of the autocomplete code
-    * Supports newlines and spaces completion
+    * Complete for objects
+    * Supports completion after newlines and whitespaces e.g. myobj.\n  myVal
     * Completes returns of functions
       * e.g. myFunc({val: 5}).argVal.val
       * Builder pattern
