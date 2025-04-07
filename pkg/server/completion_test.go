@@ -1519,6 +1519,63 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "array access 0",
+			filename:        "./testdata/complete/array.jsonnet",
+			replaceString:   "a: myArray[0].firstArray,",
+			replaceByString: "a: myArray[0].",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "firstArray",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "firstArray",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "array access 1",
+			filename:        "./testdata/complete/array.jsonnet",
+			replaceString:   "a: myArray[0].firstArray,",
+			replaceByString: "a: myArray[1].",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "secondArray",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "secondArray",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "array access 1 with key",
+			filename:        "./testdata/complete/array.jsonnet",
+			replaceString:   "a: myArray[0].firstArray,",
+			replaceByString: "a: myArray[1].secondArray.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "key",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "key",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

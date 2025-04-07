@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/google/go-jsonnet/ast"
@@ -185,7 +186,7 @@ stackLoop:
 			searchstack.Push(imported)
 
 		case *ast.Index:
-			log.Errorf("INDEX TARGET %v", reflect.TypeOf(currentNode.Target))
+			log.Errorf("INDEX TARGET %v index: %v", reflect.TypeOf(currentNode.Target), currentNode.Index)
 			searchstack.Push(currentNode.Target)
 		case *ast.Function:
 			funcNode = currentNode
@@ -631,6 +632,39 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				log.Errorf("Failed to resolve conditional: %v", err)
 			}
 			searchstack.Push(resolved)
+
+		case *ast.Array:
+			// Pop array
+			callstack.Pop()
+			// Next is index
+			nextNode := callstack.Pop()
+			if nextNode == nil {
+				log.Errorf("Array node has no next node")
+				continue
+			}
+			indexNode, ok := nextNode.(*ast.Index)
+			if !ok {
+				log.Errorf("Array node has no index node")
+				continue
+			}
+
+			log.Errorf("ARRAY %+v", currentNode)
+			callstack.PrintStack()
+			indexVal, ok := indexNode.Index.(*ast.LiteralNumber)
+			if !ok {
+				log.Errorf("Index is not a number")
+				continue
+			}
+			indexNum, err := strconv.Atoi(indexVal.OriginalString)
+			if err != nil {
+				log.Errorf("Could not convert index to an int")
+				continue
+			}
+			if indexNum >= len(currentNode.Elements) {
+				log.Errorf("Index out of bounds")
+				continue
+			}
+			searchstack.Push(currentNode.Elements[indexNum].Expr)
 
 		default:
 			log.Errorf("Unhandled type in getDesugaredObject: %v", reflect.TypeOf(currentNode))

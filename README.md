@@ -29,7 +29,8 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
     * Complete import function calls (import 'a.libsonnet')("myArg").val
     * Support super completion
     * Complete keywords (super, self, local)
-    * Completing conditionals (function argument conditions are still TODO)
+    * Complete conditionals (function argument conditions are still TODO)
+    * Complete array access
   * Basic automatic ast fix
 
 ### TODO
