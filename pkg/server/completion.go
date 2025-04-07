@@ -805,11 +805,11 @@ func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, po
 		var binds ast.LocalBinds
 		switch typedCurr := curr.(type) {
 		case *ast.DesugaredObject:
-			binds = typedCurr.Locals
 			addSelf = true
+			binds = typedCurr.Locals
 			parentNode, _, err := stack.FindNext(reflect.TypeFor[*ast.Binary]())
 			if err != nil {
-				continue
+				break
 			}
 			//nolint:forcetypeassert // go stuff
 			parentBinary := parentNode.(*ast.Binary)
@@ -822,7 +822,7 @@ func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, po
 				items = append(items, createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
 			}
 		default:
-			continue
+			break
 		}
 		for _, bind := range binds {
 			label := string(bind.Variable)
