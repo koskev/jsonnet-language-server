@@ -419,8 +419,14 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				desugaredObjects = append(desugaredObjects, currentNode)
 			}
 		case *ast.Self:
+			// Create new stack to find the correct desugared object
+			tempStack, err := processing.FindNodeByPosition(documentstack.PeekFront(), currentNode.Loc().Begin)
+			if err != nil {
+				log.Errorf("Unable to find self object from front: %v", err)
+				continue
+			}
 			// Search for next DesugaredObject
-			selfObject, pos, err := documentstack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
+			selfObject, pos, err := tempStack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
 			if err != nil {
 				log.Errorf("Unable to find self object: %v", err)
 				continue
@@ -428,11 +434,10 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// Self refers to the next desugared object resolving all binaries: {a:1} + {b: self.a, c: self.d} + {d:2}
 			// Super only refers to the "upper" binaries: {a:1} + {b: super.a, c: self.d} + {d:2}
 
-			// TODO: find binaries after the current one
-			// Find top most binary and flatten it
+			// Find top most binary and flatten it to also get the binary after the current one
 			var binary *ast.Binary
 			for {
-				binNode, binaryPos, err := documentstack.FindNextFromIndex(reflect.TypeFor[*ast.Binary](), pos-1)
+				binNode, binaryPos, err := tempStack.FindNextFromIndex(reflect.TypeFor[*ast.Binary](), pos-1)
 				if err != nil {
 					break
 				}
@@ -459,8 +464,14 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			}
 
 		case *ast.SuperIndex:
+			// Create new stack to find the correct desugared object
+			tempStack, err := processing.FindNodeByPosition(documentstack.PeekFront(), currentNode.Loc().Begin)
+			if err != nil {
+				log.Errorf("Unable to find self object from front: %v", err)
+				continue
+			}
 			// Search for next DesugaredObject
-			selfObject, pos, err := documentstack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
+			selfObject, pos, err := tempStack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
 			if err != nil {
 				log.Errorf("Unable to find self object: %v", err)
 				continue
@@ -469,7 +480,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// Super only refers to the "upper" binaries: {a:1} + {b: super.a, c: self.d} + {d:2}
 
 			// This resolves all binaries "above"
-			binNode, binaryPos, err := documentstack.FindNextFromIndex(reflect.TypeFor[*ast.Binary](), pos)
+			binNode, binaryPos, err := tempStack.FindNextFromIndex(reflect.TypeFor[*ast.Binary](), pos)
 			searchstack.Push(selfObject)
 			if err != nil {
 				// No binary

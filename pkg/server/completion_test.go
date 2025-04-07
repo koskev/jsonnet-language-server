@@ -1492,6 +1492,33 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "outer self local",
+			filename:        "./testdata/complete/selfvar.jsonnet",
+			replaceString:   "innerKey:: 5,",
+			replaceByString: "innerKey:: outerSelf.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "innerVals",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "innerVals",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+					{
+						Label:      "outerKey",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "outerKey",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
