@@ -20,4 +20,13 @@
 
 
   test: self.util.new().withAttr('hello').withAttr2('world').build(),
+
+  multiline:
+    self
+    .util
+    .new()
+    .withAttr('hello')
+    .withAttr2('world')
+    .build(),
+
 }

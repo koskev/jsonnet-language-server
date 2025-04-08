@@ -151,6 +151,7 @@ func TestCompletion(t *testing.T) {
 		expected                       protocol.CompletionList
 		completionOffset               int
 		lineOverride                   int
+		disable                        bool
 	}{
 		{
 			name:            "self function",
@@ -1595,6 +1596,179 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "complete in array with objects after",
+			filename:        "./testdata/complete/topofarray.jsonnet",
+			replaceString:   "myObj.keyB,",
+			replaceByString: "myObj.",
+			disable:         true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "keyA",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "keyA",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "keyB",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "keyB",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "builder pattern in multiple lines with index",
+			filename:        "./testdata/builder-pattern.jsonnet",
+			replaceString:   " .build(),",
+			replaceByString: " .b",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "build",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "builder pattern in multiple lines",
+			filename:        "./testdata/builder-pattern.jsonnet",
+			replaceString:   " .build(),",
+			replaceByString: " .",
+			disable:         true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "attr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "attr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr2",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "build",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr(v)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr2(v)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "complete bracket import no import",
+			filename:        "./testdata/complete/import/directcomplete.jsonnet",
+			replaceString:   "a: (import 'object.libsonnet'),",
+			replaceByString: "a: (import 'object.libsonnet').",
+			disable:         true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "keyA",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "keyA",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "hiddenKey",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "hiddenKey",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "nestedKey",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "nestedKey",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "complete bracket import nested",
+			filename:        "./testdata/complete/import/directcomplete.jsonnet",
+			replaceString:   "a: (import 'object.libsonnet'),",
+			replaceByString: "a: (import 'object.libsonnet').nestedKey.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "innerKeyA",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "innerKeyA",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "complete bracket import nested 2",
+			filename:        "./testdata/complete/import/directcomplete.jsonnet",
+			replaceString:   "a: (import 'object.libsonnet'),",
+			replaceByString: "a: (import 'object.libsonnet').nestedKey.innerKeyA.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "innerKeyB",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "innerKeyB",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1654,7 +1828,11 @@ func TestCompletion(t *testing.T) {
 				// TODO: Remove this
 				tc.expected.Items[i].Kind = protocol.VariableCompletion
 			}
-			assert.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
+			if !tc.disable {
+				assert.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
+			} else {
+				t.Skipf("Skipping disabled test case %s", tc.name)
+			}
 		})
 	}
 }
