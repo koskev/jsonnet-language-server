@@ -1576,6 +1576,25 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "complete multiple format",
+			filename:        "./testdata/complete/formatstringmultiple.jsonnet",
+			replaceString:   "a: '%s:%s' % [myVar, myVar],",
+			replaceByString: "a: '%s:%s' % [myVar, my",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "myVar",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "myVar",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
