@@ -1315,6 +1315,45 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
+			name:            "builder pattern argument second this",
+			filename:        "./testdata/builder-pattern.jsonnet",
+			replaceString:   "test: self.util.new().withAttr('hello').withAttr2('world').build(),",
+			replaceByString: "test: self.util.new().withAttr({myKey: 5}).withAttr2('world').attr.",
+			disable:         true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "myKey",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "myKey",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "builder pattern argument second same",
+			filename:        "./testdata/builder-pattern.jsonnet",
+			replaceString:   "test: self.util.new().withAttr('hello').withAttr2('world').build(),",
+			replaceByString: "test: self.util.new().withAttr({myKeyA: 5}).withAttr({myKeyB: 5}).attr.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "myKeyB",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "myKeyB",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:            "self global outside of object",
 			filename:        "./testdata/complete/keywords/self.jsonnet",
 			replaceString:   "local myVar = 5;",
@@ -1813,9 +1852,7 @@ func TestCompletion(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			t.Run(tc.name+"_bulk_replace", func(t *testing.T) {
-				testResult(t, result, tc, cursorPosition)
-			})
+			testResult(t, result, tc, cursorPosition)
 
 			// Test if the completion also works if the last change was in a different place
 			newText := "local abcde = 5;\n" + replacedContent
@@ -1824,9 +1861,7 @@ func TestCompletion(t *testing.T) {
 			version++
 			updateText(t, server, replacedContent, fileURI, version)
 
-			t.Run(tc.name+"_other_place_change", func(t *testing.T) {
-				testResult(t, result, tc, cursorPosition)
-			})
+			testResult(t, result, tc, cursorPosition)
 
 			// TODO: test typing char by char
 			// TODO: support loading a broken document
@@ -1860,7 +1895,7 @@ func testResult(t *testing.T, result *protocol.CompletionList, tc completionCase
 		tc.expected.Items[i].Kind = protocol.VariableCompletion
 	}
 	if !tc.disable {
-		assert.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
+		require.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
 	} else {
 		t.Skipf("Skipping disabled test case %s", tc.name)
 	}
