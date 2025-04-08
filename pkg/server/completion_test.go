@@ -143,16 +143,18 @@ func TestCompletionStdLib(t *testing.T) {
 	}
 }
 
+type completionCase struct {
+	name                           string
+	filename                       string
+	replaceString, replaceByString string
+	expected                       protocol.CompletionList
+	completionOffset               int
+	lineOverride                   int
+	disable                        bool
+}
+
 func TestCompletion(t *testing.T) {
-	var testCases = []struct {
-		name                           string
-		filename                       string
-		replaceString, replaceByString string
-		expected                       protocol.CompletionList
-		completionOffset               int
-		lineOverride                   int
-		disable                        bool
-	}{
+	var testCases = []completionCase{
 		{
 			name:            "self function",
 			filename:        "testdata/test_basic_lib.libsonnet",
@@ -1780,19 +1782,11 @@ func TestCompletion(t *testing.T) {
 			server.configuration.ExtCode = map[string]string{
 				"code": "{ objA: 5, ['%s' % 'computed']: 3}",
 			}
+			var version int32 = 2
 
 			replacedContent := strings.ReplaceAll(string(content), tc.replaceString, tc.replaceByString)
 
-			err = server.DidChange(context.Background(), &protocol.DidChangeTextDocumentParams{
-				ContentChanges: []protocol.TextDocumentContentChangeEvent{{
-					Text: replacedContent,
-				}},
-				TextDocument: protocol.VersionedTextDocumentIdentifier{
-					TextDocumentIdentifier: protocol.TextDocumentIdentifier{URI: fileURI},
-					Version:                2,
-				},
-			})
-			require.NoError(t, err)
+			updateText(t, server, replacedContent, fileURI, version)
 
 			cursorPosition := protocol.Position{}
 			for _, line := range strings.Split(replacedContent, "\n") {
@@ -1818,21 +1812,56 @@ func TestCompletion(t *testing.T) {
 				},
 			})
 			require.NoError(t, err)
-			// Testing details makes it practically impossible to change these
-			for i := range result.Items {
-				result.Items[i].Detail = ""
-				result.Items[i].Kind = protocol.VariableCompletion
-			}
-			for i := range tc.expected.Items {
-				tc.expected.Items[i].Detail = ""
-				// TODO: Remove this
-				tc.expected.Items[i].Kind = protocol.VariableCompletion
-			}
-			if !tc.disable {
-				assert.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
-			} else {
-				t.Skipf("Skipping disabled test case %s", tc.name)
-			}
+
+			t.Run(tc.name+"_bulk_replace", func(t *testing.T) {
+				testResult(t, result, tc, cursorPosition)
+			})
+
+			// Test if the completion also works if the last change was in a different place
+			newText := "local abcde = 5;\n" + replacedContent
+			version++
+			updateText(t, server, newText, fileURI, version)
+			version++
+			updateText(t, server, replacedContent, fileURI, version)
+
+			t.Run(tc.name+"_other_place_change", func(t *testing.T) {
+				testResult(t, result, tc, cursorPosition)
+			})
+
+			// TODO: test typing char by char
+			// TODO: support loading a broken document
 		})
+	}
+}
+
+func updateText(t *testing.T, server *Server, replacedContent string, fileURI protocol.DocumentURI, version int32) {
+	err := server.DidChange(context.Background(), &protocol.DidChangeTextDocumentParams{
+		ContentChanges: []protocol.TextDocumentContentChangeEvent{{
+			Text: replacedContent,
+		}},
+		TextDocument: protocol.VersionedTextDocumentIdentifier{
+			TextDocumentIdentifier: protocol.TextDocumentIdentifier{URI: fileURI},
+			Version:                version,
+		},
+	})
+	require.NoError(t, err)
+}
+
+func testResult(t *testing.T, result *protocol.CompletionList, tc completionCase, cursorPosition protocol.Position) {
+	t.Helper()
+	// Testing details makes it practically impossible to change these
+	for i := range result.Items {
+		result.Items[i].Detail = ""
+		result.Items[i].Kind = protocol.VariableCompletion
+	}
+	for i := range tc.expected.Items {
+		tc.expected.Items[i].Detail = ""
+		// TODO: Remove this
+		tc.expected.Items[i].Kind = protocol.VariableCompletion
+	}
+	if !tc.disable {
+		assert.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
+	} else {
+		t.Skipf("Skipping disabled test case %s", tc.name)
 	}
 }
