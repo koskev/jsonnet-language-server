@@ -899,6 +899,48 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
+			name:            "completion of named argument with object",
+			filename:        "./testdata/complete/functionargs.jsonnet",
+			replaceString:   "a: localfunc(arg=data),",
+			replaceByString: "a: localfunc(arg=data.",
+			disable:         true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "coolkey",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "arg.coolkey",
+						InsertText: "coolkey",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "completion of unnamed argument with object",
+			filename:        "./testdata/complete/functionargs.jsonnet",
+			replaceString:   "a: localfunc(arg=data),",
+			replaceByString: "a: localfunc(data.",
+			disable:         true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "coolkey",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "arg.coolkey",
+						InsertText: "coolkey",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:            "completion for extcode",
 			filename:        "./testdata/complete/extcode.jsonnet",
 			replaceString:   "extcode.objA,",
