@@ -1279,6 +1279,33 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "conditional from object inline",
+			filename:        "./testdata/complete/conditional.jsonnet",
+			replaceString:   "a: myCondLocal(),",
+			replaceByString: "a: conditionalObject.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "field",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "field",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+					{
+						Label:      "inlineConditional",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "inlineConditional",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "boolean",
+						},
+					},
+				},
+			},
+		},
 		// --- Builder Pattern ---
 		{
 			name:            "builder pattern simple",

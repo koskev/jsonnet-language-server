@@ -339,14 +339,38 @@ func (s *Server) buildCallStack(node ast.Node, _ *nodestack.NodeStack) *nodestac
 	return callStack
 }
 
-func DesugaredObjectKeyToString(node ast.Node) *ast.LiteralString {
+func (s *Server) evaluateObjectFields(node *ast.DesugaredObject, documentstack *nodestack.NodeStack) *ast.DesugaredObject {
+	// TODO: node.clone()
+	for i, field := range node.Fields {
+		resolved := s.desugaredObjectKeyToString(field.Name, documentstack)
+		if resolved != nil {
+			node.Fields[i].Name = resolved
+		}
+	}
+	return node
+}
+
+func (s *Server) desugaredObjectKeyToString(node ast.Node, documentstack *nodestack.NodeStack) *ast.LiteralString {
 	// handle conditional
 	switch currentNode := node.(type) {
 	case *ast.LiteralString:
 		return currentNode
 	case *ast.Conditional:
-		// TODO: evaluate conditional
-		return DesugaredObjectKeyToString(currentNode.BranchTrue)
+		vm := s.getVM(node.Loc().FileName)
+		compiled, err := processing.CompileNodeFromStack(currentNode.Cond, documentstack, vm)
+		if err != nil {
+			log.Errorf("Failed to compile node %v", err)
+			return nil
+		}
+		result, ok := compiled.(*ast.LiteralBoolean)
+		if !ok {
+			log.Errorf("Result is not boolean but %T", compiled)
+			return nil
+		}
+		if result.Value {
+			return s.desugaredObjectKeyToString(currentNode.BranchTrue, documentstack)
+		}
+		return s.desugaredObjectKeyToString(currentNode.BranchFalse, documentstack)
 	}
 
 	return nil
@@ -414,9 +438,8 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				}
 			}
 		case *ast.DesugaredObject:
-			// TODO: evaluate name/key
-			// Apprently nil can have a type...
-			if currentNode != nil {
+			obj := s.evaluateObjectFields(currentNode, documentstack)
+			if obj != nil {
 				desugaredObjects = append(desugaredObjects, currentNode)
 			}
 		case *ast.Self:
