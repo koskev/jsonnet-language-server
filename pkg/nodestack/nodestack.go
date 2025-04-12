@@ -158,3 +158,12 @@ func (s *NodeStack) PrintStack() {
 	}
 	logrus.Errorf("%s", output.String())
 }
+
+func (s *NodeStack) GetNextFilename() string {
+	filename := ""
+	for i := len(s.Stack) - 1; i >= 0 && len(filename) == 0; i-- {
+		filename = s.Stack[i].Loc().FileName
+	}
+
+	return filename
+}

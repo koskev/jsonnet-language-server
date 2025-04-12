@@ -106,6 +106,10 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 
 	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex)
 	log.Errorf("Items: %+v", items)
+
+	//t := nodetree.BuildTree(nil, doc.AST)
+	//log.Errorf("\n%s", t)
+
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 }
 
@@ -650,11 +654,12 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				}
 			}
 		case *ast.Conditional:
-			resolved, err := s.resolveConditional(currentNode)
+			resolved, err := s.resolveConditional(currentNode, documentstack)
 			if err != nil {
 				log.Errorf("Failed to resolve conditional: %v", err)
+			} else {
+				searchstack.Push(resolved)
 			}
-			searchstack.Push(resolved)
 
 		case *ast.Array:
 			// Pop array
@@ -700,13 +705,10 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 	return merged
 }
 
-func (s *Server) resolveConditional(node *ast.Conditional) (ast.Node, error) {
-	vm, root, err := s.getAst(node.Loc().FileName, "")
-	if err != nil {
-		return nil, err
-	}
-	processor := processing.NewProcessor(s.cache, vm)
-	compiled, err := processor.CompileNode(root, node.Cond)
+func (s *Server) resolveConditional(node *ast.Conditional, documentstack *nodestack.NodeStack) (ast.Node, error) {
+	filename := documentstack.GetNextFilename()
+	vm := s.getVM(filename)
+	compiled, err := processing.CompileNodeFromStack(node.Cond, documentstack, vm)
 	if err != nil {
 		return nil, err
 	}

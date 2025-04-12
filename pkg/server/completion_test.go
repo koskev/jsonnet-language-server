@@ -1879,6 +1879,33 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "complete my builder pattern with assert",
+			filename:        "./testdata/complete/builderpattern.jsonnet",
+			replaceString:   "test: self.new('mybuilder'),",
+			replaceByString: "test: self.new('mybuilder').withVal(1).w",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "withName",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withName(name)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withVal",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withVal(arg)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

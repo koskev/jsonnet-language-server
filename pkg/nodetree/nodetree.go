@@ -70,6 +70,11 @@ func (t *NodeTree) String() string {
 
 	output.WriteString(fmt.Sprintf("%v at %v", reflect.TypeOf(t.Node), t.Node.Loc()))
 	switch node := t.Node.(type) {
+	case *ast.Local:
+		output.WriteString(fmt.Sprintf("Body Type %T", node.Body))
+		for _, bind := range node.Binds {
+			output.WriteString(fmt.Sprintf("BIND: %+v of type %T", bind.Variable, bind.Body))
+		}
 	case *ast.LiteralString:
 		output.WriteString(fmt.Sprintf(" %s", node.Value))
 	case *ast.Var:
