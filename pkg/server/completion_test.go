@@ -770,7 +770,7 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
-			name:            "completion in function arguments",
+			name:            "self completion in function arguments",
 			filename:        "testdata/functions.libsonnet",
 			replaceString:   "test: myfunc(arg1, arg2)",
 			replaceByString: "test: myfunc(arg1, self.",
@@ -903,7 +903,6 @@ func TestCompletion(t *testing.T) {
 			filename:        "./testdata/complete/functionargs.jsonnet",
 			replaceString:   "a: localfunc(arg=data),",
 			replaceByString: "a: localfunc(arg=data.",
-			disable:         true,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
@@ -924,7 +923,6 @@ func TestCompletion(t *testing.T) {
 			filename:        "./testdata/complete/functionargs.jsonnet",
 			replaceString:   "a: localfunc(arg=data),",
 			replaceByString: "a: localfunc(data.",
-			disable:         true,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
@@ -1711,7 +1709,6 @@ func TestCompletion(t *testing.T) {
 			filename:        "./testdata/complete/topofarray.jsonnet",
 			replaceString:   "myObj.keyB,",
 			replaceByString: "myObj.",
-			disable:         true,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{

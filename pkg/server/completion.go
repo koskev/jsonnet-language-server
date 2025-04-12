@@ -269,30 +269,6 @@ func (s *Server) addFunctionToStack(applyNode *ast.Apply, funcNode *ast.Function
 	return searchstack
 }
 
-func getVarIndexApply(documentstack *nodestack.NodeStack) ast.Node {
-	documentstack = documentstack.Clone()
-	prevNode := documentstack.Pop()
-	log.Errorf("varIndex %v", reflect.TypeOf(prevNode))
-	_, ok := prevNode.(*ast.Var)
-	if !ok {
-		return prevNode
-	}
-
-stackLoop:
-	for !documentstack.IsEmpty() {
-		log.Errorf("GET NODE %v", reflect.TypeOf(documentstack.Peek()))
-		switch currentNode := documentstack.Pop().(type) {
-		case *ast.Index:
-			prevNode = currentNode
-		case *ast.Apply:
-			prevNode = currentNode
-		default:
-			break stackLoop
-		}
-	}
-	return prevNode
-}
-
 func (s *Server) buildCallStack(node ast.Node, _ *nodestack.NodeStack) *nodestack.NodeStack {
 	nodesToSearch := nodestack.NewNodeStack(node)
 	callStack := &nodestack.NodeStack{}
@@ -414,7 +390,7 @@ func compareSelf(selfNode ast.Node, other ast.Node) bool {
 func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstack *nodestack.NodeStack) *ast.DesugaredObject {
 	searchstack := nodestack.NewNodeStack(callstack.Peek())
 	desugaredObjects := []*ast.DesugaredObject{}
-	if len(documentstack.Stack) > 100 {
+	if len(documentstack.Stack) > 10_000 {
 		log.Errorf("Stack too large")
 		documentstack.PrintStack()
 		return nil
@@ -727,7 +703,7 @@ func (s *Server) resolveConditional(node *ast.Conditional, documentstack *nodest
 // get desurgared object for each step
 // does only act on complete indices. The current typing index is handled one layer above
 func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.DesugaredObject {
-	node := getVarIndexApply(documentstack)
+	node := documentstack.Pop()
 	callstack := s.buildCallStack(node, documentstack)
 
 	log.Errorf("Callstack %+v", callstack)
