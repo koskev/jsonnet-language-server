@@ -107,8 +107,8 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex)
 	log.Errorf("Items: %+v", items)
 
-	//t := nodetree.BuildTree(nil, doc.AST)
-	//log.Errorf("\n%s", t)
+	// t := nodetree.BuildTree(nil, doc.AST)
+	// log.Errorf("\n%s", t)
 
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 }
@@ -448,7 +448,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			}
 		case *ast.Self:
 			// Create new stack to find the correct desugared object
-			tempStack, err := processing.FindNodeByPosition(documentstack.PeekFront(), currentNode.Loc().Begin)
+			tempStack, err := processing.FindNodeInStack(currentNode, documentstack)
 			if err != nil {
 				log.Errorf("Unable to find self object from front: %v", err)
 				continue
@@ -456,7 +456,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// Search for next DesugaredObject
 			selfObject, pos, err := tempStack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
 			if err != nil {
-				log.Errorf("Unable to find self object: %v", err)
+				log.Errorf("Unable to find self object from self: %v", err)
 				continue
 			}
 			// Self refers to the next desugared object resolving all binaries: {a:1} + {b: self.a, c: self.d} + {d:2}
@@ -501,7 +501,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// Search for next DesugaredObject
 			selfObject, pos, err := tempStack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
 			if err != nil {
-				log.Errorf("Unable to find self object: %v", err)
+				log.Errorf("Unable to find self object from super index: %v", err)
 				continue
 			}
 			// Self refers to the next desugared object resolving all binaries: {a:1} + {b: self.a, c: self.d} + {d:2}

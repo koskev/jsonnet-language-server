@@ -122,3 +122,21 @@ func FindNodeByPosition(node ast.Node, location ast.Location) (*nodestack.NodeSt
 	}
 	return searchStack.ReorderDesugaredObjects(), nil
 }
+
+func FindNodeInStack(node ast.Node, documentstack *nodestack.NodeStack) (*nodestack.NodeStack, error) {
+	if node == nil {
+		return nil, errors.New("node is nil")
+	}
+
+	stack := nodestack.NewNodeStack(node)
+	searchStack := documentstack.Clone()
+	var curr ast.Node
+	for !searchStack.IsEmpty() {
+		curr = searchStack.Pop()
+		inRange := InRange(node.Loc().Begin, *curr.Loc()) && node.Loc().FileName == curr.Loc().FileName
+		if inRange {
+			stack.PushFront(curr)
+		}
+	}
+	return stack, nil
+}

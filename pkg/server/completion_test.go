@@ -1906,6 +1906,33 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "imported self val",
+			filename:        "./testdata/complete/import/selfimport.jsonnet",
+			replaceString:   "a: sefVal.selfVal,",
+			replaceByString: "a: sefVal.selfVal.",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "myVar",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "myVar",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "selfVal",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "selfVal",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "self",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
