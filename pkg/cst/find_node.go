@@ -119,21 +119,16 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 		// myFunc(1).
 		if potentialNode.GrammarName() == NodeClosingBracket || potentialNode.GrammarName() == NodeClosingSquareBracket {
 			// a: myfunc(arg) the next id would be "arg". Therefore we take a look at the parent and see if it is a function call
-			parent := potentialNode.Parent()
-			if IsNode(parent, NodeFunctionCall) {
-				potentialNode, err = GetFirstChildType(parent, NodeID)
-				if err != nil {
-					return nil, fmt.Errorf("could not find id of function call: %w", err)
-				}
-				// The first id is the function call itself
-			} else {
-				// This is needed for array access
-				// Find next id
-				for potentialNode != nil && !IsNode(potentialNode, NodeID) {
-					potentialNode = GetPrevNode(potentialNode)
-				}
+
+			// Get the opening bracket
+			for potentialNode != nil && potentialNode.GrammarName() != NodeOpeningBracket && potentialNode.GrammarName() != NodeOpeningSquareBracket {
+				potentialNode = potentialNode.PrevSibling()
 			}
-			found = potentialNode
+			if potentialNode == nil {
+				return nil, fmt.Errorf("finding the opening bracket")
+			}
+			// Get the node before the opening bracket
+			found = GetPrevNode(potentialNode)
 			//found = found.PrevSibling()
 		} else {
 			// myObj.

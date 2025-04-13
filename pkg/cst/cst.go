@@ -149,3 +149,28 @@ func GetFirstChildType(node *sitter.Node, nodeType NodeType) (*sitter.Node, erro
 	}
 	return nil, fmt.Errorf("unable to find child for type %s", nodeType)
 }
+func GetLastChildType(node *sitter.Node, nodeType NodeType, recursive bool) (*sitter.Node, error) {
+	if node == nil {
+		return nil, fmt.Errorf("node is nil")
+	}
+	cursor := node.Walk()
+	children := node.Children(cursor)
+	var foundChild *sitter.Node
+	for _, child := range children {
+		if child.GrammarName() == string(nodeType) {
+			foundChild = &child
+		}
+	}
+	if recursive {
+		for _, child := range children {
+			ret, err := GetLastChildType(&child, nodeType, recursive)
+			if err == nil {
+				foundChild = ret
+			}
+		}
+	}
+	if foundChild != nil {
+		return foundChild, nil
+	}
+	return nil, fmt.Errorf("unable to find child for type %s", nodeType)
+}

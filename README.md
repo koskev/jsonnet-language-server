@@ -35,8 +35,6 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 
 ### TODO
  * Refactor/Cleanup new features
- * Original Bugs
-    * Broken go to for dollar inside locals
  * General cleanup after understanding more lsp stuff
  * Code actions?
  * Flow typing?

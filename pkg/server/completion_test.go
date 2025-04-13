@@ -1904,6 +1904,49 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
+			name:            "complete imported builder pattern",
+			filename:        "./testdata/complete/builderpatternimport.jsonnet",
+			replaceString:   "builder.new('middle'),",
+			replaceByString: "builder.new('middle').",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "_name",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "_name",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "_vals",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "_vals",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "array",
+						},
+					},
+					{
+						Label:      "withName",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withName(name)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withVal",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withVal(arg)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:            "imported self val",
 			filename:        "./testdata/complete/import/selfimport.jsonnet",
 			replaceString:   "a: sefVal.selfVal,",
