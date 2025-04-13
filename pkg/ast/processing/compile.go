@@ -10,13 +10,13 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func resolveVar(node *ast.Var, documentstack *nodestack.NodeStack) (ast.Node, error) {
+func ResolveVar(node *ast.Var, documentstack *nodestack.NodeStack) (ast.Node, error) {
 	foundNode := FindNodeByID(documentstack, node.Id)
 	if foundNode == nil {
 		return nil, fmt.Errorf("finding node in stack")
 	}
 	if varNode, ok := foundNode.(*ast.Var); ok {
-		return resolveVar(varNode, documentstack)
+		return ResolveVar(varNode, documentstack)
 	}
 	return foundNode, nil
 }
@@ -37,7 +37,7 @@ func CompileNodeFromStack(node ast.Node, documentstack *nodestack.NodeStack, vm 
 		switch currentNode := currentNode.(type) {
 		case *ast.Var:
 			// Recursively resolve the var. If we just add the var as the body, compile can't find the var
-			varNode, err := resolveVar(currentNode, documentstack)
+			varNode, err := ResolveVar(currentNode, documentstack)
 			if err != nil {
 				logrus.Errorf("Failed to resolve var while compiling: %v", err)
 				continue

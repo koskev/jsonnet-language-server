@@ -2,6 +2,7 @@ package cst
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -72,7 +73,7 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 
 	// search if prev token is a :,;
 	currentIndex := getCurrentIndex(content, pos)
-	log.Errorf("################# current index %v", currentIndex)
+	log.Errorf("################# current index %v from %+v", currentIndex, pos)
 	// Default to local completion
 	info.CompletionType = CompleteLocal
 
@@ -86,7 +87,7 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 		return nil, err
 	}
 	found := GetNodeAtPos(root, position.ProtocolToCST(pos))
-	log.Errorf("#Found: %v", found.GrammarName())
+	log.Errorf("#Found: %v (%+v)", found.GrammarName(), found.Range())
 
 	//nolint: gocritic
 	switch found.GrammarName() {
@@ -111,9 +112,29 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	case NodeDot:
 		info.InjectIndex = true
 		potentialNode := GetPrevNode(found)
+		// If we are at the last node, the prev one is an error node. If that is the case we need to skip it
+		if IsNode(potentialNode, NodeError) {
+			potentialNode = GetPrevNode(potentialNode)
+		}
 		// myFunc(1).
-		if potentialNode.GrammarName() == NodeClosingBracket {
-			found = found.PrevSibling()
+		if potentialNode.GrammarName() == NodeClosingBracket || potentialNode.GrammarName() == NodeClosingSquareBracket {
+			// a: myfunc(arg) the next id would be "arg". Therefore we take a look at the parent and see if it is a function call
+			parent := potentialNode.Parent()
+			if IsNode(parent, NodeFunctionCall) {
+				potentialNode, err = GetFirstChildType(parent, NodeID)
+				if err != nil {
+					return nil, fmt.Errorf("could not find id of function call: %w", err)
+				}
+				// The first id is the function call itself
+			} else {
+				// This is needed for array access
+				// Find next id
+				for potentialNode != nil && !IsNode(potentialNode, NodeID) {
+					potentialNode = GetPrevNode(potentialNode)
+				}
+			}
+			found = potentialNode
+			//found = found.PrevSibling()
 		} else {
 			// myObj.
 			found = potentialNode
@@ -151,7 +172,7 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	//	found = GetNonSymbolNode(GetLastChild(fieldAccessNode))
 	// }
 	info.Node = found
-	log.Errorf("Found end: %+v", found.GrammarName())
+	log.Errorf("Found end: %+v (%+v)", found.GrammarName(), found.StartPosition())
 
 	return &info, nil
 }

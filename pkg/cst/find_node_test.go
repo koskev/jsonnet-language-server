@@ -106,7 +106,7 @@ var testCases = []CstNodeTestCase{
 		replaceByString: "myFunc(1).",
 		expected: CstExpected{
 			inject:   true,
-			nodeType: NodeFunctionCall,
+			nodeType: NodeID,
 			nodeRange: tree_sitter.Range{
 				StartPoint: tree_sitter.NewPoint(2, 2),
 				EndPoint:   tree_sitter.NewPoint(2, 11),

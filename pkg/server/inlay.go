@@ -30,7 +30,7 @@ func (s *Server) InlayHint(_ context.Context, params *protocol.InlayHintParams) 
 	// Iterate over all nodes
 	// Apply inlay hint to all arguments
 	// TODO: special case for stdlib
-	tree := nodetree.BuildTree(nil, doc.AST)
+	tree := nodetree.BuildTree(nil, ast.Clone(doc.AST))
 	vm := s.getVM(params.TextDocument.URI.SpanURI().Filename())
 
 	if s.configuration.Inlay.EnableIndexValue {

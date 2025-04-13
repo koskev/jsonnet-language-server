@@ -1734,8 +1734,8 @@ func TestCompletion(t *testing.T) {
 		{
 			name:            "builder pattern in multiple lines with index",
 			filename:        "./testdata/builder-pattern.jsonnet",
-			replaceString:   " .build(),",
-			replaceByString: " .b",
+			replaceString:   ".build(),  // Last build line",
+			replaceByString: ".b",
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
@@ -1751,11 +1751,11 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
-			name:            "builder pattern in multiple lines",
+			name:            "builder pattern in multiple lines without index",
 			filename:        "./testdata/builder-pattern.jsonnet",
-			replaceString:   " .build(),",
-			replaceByString: " .",
-			disable:         true,
+			replaceString:   ".build(),  // Last build line",
+			replaceByString: ".",
+			disable:         false,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
@@ -1764,7 +1764,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						InsertText: "attr",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "number",
+							Description: "string",
 						},
 					},
 					{
@@ -1772,7 +1772,7 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						InsertText: "attr2",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "number",
+							Description: "string",
 						},
 					},
 					{

@@ -27,6 +27,6 @@
     .new()
     .withAttr('hello')
     .withAttr2('world')
-    .build(),
+    .build(),  // Last build line
 
 }

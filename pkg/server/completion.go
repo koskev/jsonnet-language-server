@@ -107,9 +107,6 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex)
 	log.Errorf("Items: %+v", items)
 
-	// t := nodetree.BuildTree(nil, doc.AST)
-	// log.Errorf("\n%s", t)
-
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 }
 
@@ -269,7 +266,8 @@ func (s *Server) addFunctionToStack(applyNode *ast.Apply, funcNode *ast.Function
 	return searchstack
 }
 
-func (s *Server) buildCallStack(node ast.Node, _ *nodestack.NodeStack) *nodestack.NodeStack {
+func (s *Server) buildCallStack(documentstack *nodestack.NodeStack) *nodestack.NodeStack {
+	node := documentstack.Pop()
 	nodesToSearch := nodestack.NewNodeStack(node)
 	callStack := &nodestack.NodeStack{}
 	log.Errorf("Building call stack from %v", reflect.TypeOf(node))
@@ -303,6 +301,16 @@ func (s *Server) buildCallStack(node ast.Node, _ *nodestack.NodeStack) *nodestac
 				callStack.Push(currentNode)
 			}
 			// Inside a function call the stack also contains the function. If we see a var we can abort as a var always marks the end of a "call"
+
+			// Special case: if we have an array the next node in the documentstack is an index
+			varNode, err := processing.ResolveVar(currentNode, documentstack)
+			if err != nil {
+				log.Errorf("could not resolve var while building stack: %v", err)
+				continue
+			}
+			if indexNode, ok := documentstack.Peek().(*ast.Index); ok && indexNode != nil && reflect.TypeOf(varNode) == reflect.TypeFor[*ast.Array]() {
+				callStack.PushFront(indexNode)
+			}
 		case *ast.Apply:
 			// If callstack top is an index to the same node we'll delete it
 			log.Errorf("TARGET %v", reflect.TypeOf(currentNode.Target))
@@ -703,8 +711,7 @@ func (s *Server) resolveConditional(node *ast.Conditional, documentstack *nodest
 // get desurgared object for each step
 // does only act on complete indices. The current typing index is handled one layer above
 func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.DesugaredObject {
-	node := documentstack.Pop()
-	callstack := s.buildCallStack(node, documentstack)
+	callstack := s.buildCallStack(documentstack)
 
 	log.Errorf("Callstack %+v", callstack)
 	// First object is var or func -> resolve to desugared object (including their keys)
