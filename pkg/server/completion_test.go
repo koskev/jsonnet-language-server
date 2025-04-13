@@ -1755,7 +1755,6 @@ func TestCompletion(t *testing.T) {
 			filename:        "./testdata/builder-pattern.jsonnet",
 			replaceString:   ".build(),  // Last build line",
 			replaceByString: ".",
-			disable:         false,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
@@ -1807,22 +1806,21 @@ func TestCompletion(t *testing.T) {
 			filename:        "./testdata/complete/import/directcomplete.jsonnet",
 			replaceString:   "a: (import 'object.libsonnet'),",
 			replaceByString: "a: (import 'object.libsonnet').",
-			disable:         true,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
 					{
-						Label:      "keyA",
+						Label:      "hiddenKey",
 						Kind:       protocol.FieldCompletion,
-						InsertText: "keyA",
+						InsertText: "hiddenKey",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "number",
 						},
 					},
 					{
-						Label:      "hiddenKey",
+						Label:      "keyA",
 						Kind:       protocol.FieldCompletion,
-						InsertText: "hiddenKey",
+						InsertText: "keyA",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "number",
 						},

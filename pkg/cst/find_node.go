@@ -127,9 +127,13 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 			if potentialNode == nil {
 				return nil, fmt.Errorf("finding the opening bracket")
 			}
-			// Get the node before the opening bracket
-			found = GetPrevNode(potentialNode)
-			//found = found.PrevSibling()
+			// a: (import "a.libsonnet")
+			if IsNode(potentialNode.NextSibling(), NodeImport) {
+				found = potentialNode.NextSibling()
+			} else {
+				// Get the node before the opening bracket
+				found = GetPrevNode(potentialNode)
+			}
 		} else {
 			// myObj.
 			found = potentialNode
