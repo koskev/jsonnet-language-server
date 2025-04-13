@@ -25,6 +25,9 @@ type CompletionNodeInfo struct {
 	InjectIndex    bool
 	Index          string
 	CompletionType CompletionType
+
+	// If we are inside a function call this is the call node
+	FunctionNode *tree_sitter.Node
 }
 
 func positionToIndex(content string, pos protocol.Position) int {
@@ -42,8 +45,9 @@ func positionToIndex(content string, pos protocol.Position) int {
 	return currentPos
 }
 
+var whitespace = []rune{' ', '\n', '\t'}
+
 func getCurrentIndex(content string, pos protocol.Position) string {
-	whitespace := []rune{' ', '\n', '\t'}
 	endingTokens := []rune{':', ',', ';', '(', '=', '[', '+'}
 
 	// We want the position before the cursor
@@ -68,19 +72,42 @@ func getCurrentIndex(content string, pos protocol.Position) string {
 	return string(index)
 }
 
+func getNextNonWhitespacePosition(content string, pos protocol.Position) protocol.Position {
+	lines := strings.Split(content, "\n")
+
+	for {
+		if int(pos.Line) > len(lines)-1 {
+			return pos
+		}
+		if int(pos.Character) > len(lines[pos.Line])-1 {
+			return pos
+		}
+		currentRune := rune(lines[pos.Line][pos.Character-1])
+		if !slices.Contains(whitespace, currentRune) {
+			return pos
+		}
+		if pos.Line == 0 && pos.Character == 1 {
+			return pos
+		}
+		if pos.Character == 1 {
+			pos.Line--
+			pos.Character = uint32(len(lines[pos.Line]) - 1)
+		} else {
+			pos.Character--
+		}
+	}
+}
+
 func FindCompletionNode(ctx context.Context, content string, pos protocol.Position) (*CompletionNodeInfo, error) {
 	var info CompletionNodeInfo
 
 	// search if prev token is a :,;
 	currentIndex := getCurrentIndex(content, pos)
+	// Replace the pos with the next non whitespace token. This way we don't need a special case for stuff like "," and ", ". E.g. for checking if we are inside a function call
+	pos = getNextNonWhitespacePosition(content, pos)
 	log.Errorf("################# current index %v from %+v", currentIndex, pos)
 	// Default to local completion
 	info.CompletionType = CompleteLocal
-
-	if !strings.Contains(currentIndex, ".") {
-		info.CompletionType = CompleteGlobal
-		info.Index = currentIndex
-	}
 
 	root, err := NewTree(ctx, content)
 	if err != nil {
@@ -88,6 +115,20 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	}
 	found := GetNodeAtPos(root, position.ProtocolToCST(pos))
 	log.Errorf("#Found: %v (%+v)", found.GrammarName(), found.Range())
+
+	if !strings.Contains(currentIndex, ".") {
+		info.CompletionType = CompleteGlobal
+		info.Index = currentIndex
+
+		// Find if we have args parent. If true get the apply location and add it
+		parent := found.Parent()
+		if IsNode(parent, NodeArgs) {
+			parent = parent.Parent()
+		}
+		if IsNode(parent, NodeFunctionCall) {
+			info.FunctionNode = parent
+		}
+	}
 
 	//nolint: gocritic
 	switch found.GrammarName() {

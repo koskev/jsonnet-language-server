@@ -31,6 +31,7 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
     * Complete keywords (super, self, local)
     * Complete conditionals (function argument conditions are still TODO)
     * Complete array access
+    * Complete unused argument names: myFunc(1, arg3=3, ar<complete>),
   * Basic automatic ast fix
 
 ### TODO

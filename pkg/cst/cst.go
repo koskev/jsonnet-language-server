@@ -34,6 +34,7 @@ const (
 	NodeStringContent        = "string_content"
 	NodeStringStart          = "string_start"
 	NodeString               = "string"
+	NodeArgs                 = "args"
 )
 
 func NewTree(_ context.Context, content string) (*sitter.Node, error) {

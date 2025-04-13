@@ -147,10 +147,11 @@ type completionCase struct {
 	name                           string
 	filename                       string
 	replaceString, replaceByString string
-	expected                       protocol.CompletionList
+	expected, unexpected           protocol.CompletionList
 	completionOffset               int
 	lineOverride                   int
 	disable                        bool
+	onlyCheckIfPresent             bool
 }
 
 func TestCompletion(t *testing.T) {
@@ -1971,6 +1972,169 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:               "named function args first",
+			filename:           "./testdata/complete/functionargs.jsonnet",
+			replaceString:      "b: multiArguments(1, 2, 3),",
+			replaceByString:    "b: multiArguments(),",
+			completionOffset:   -2,
+			onlyCheckIfPresent: true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg1=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg1=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "arg2=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg2=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "arg3=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg3=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:               "named function args second",
+			filename:           "./testdata/complete/functionargs.jsonnet",
+			replaceString:      "b: multiArguments(1, 2, 3),",
+			replaceByString:    "b: multiArguments(1, ),",
+			completionOffset:   -2,
+			onlyCheckIfPresent: true,
+			unexpected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg1=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg1=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg2=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg2=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "arg3=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg3=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:               "named function args third",
+			filename:           "./testdata/complete/functionargs.jsonnet",
+			replaceString:      "b: multiArguments(1, 2, 3),",
+			replaceByString:    "b: multiArguments(1, 2, ),",
+			completionOffset:   -2,
+			onlyCheckIfPresent: true,
+			unexpected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg1=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg1=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "arg2=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg2=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg3=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg3=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:               "named function args out of order",
+			filename:           "./testdata/complete/functionargs.jsonnet",
+			replaceString:      "b: multiArguments(1, 2, 3),",
+			replaceByString:    "b: multiArguments(1, arg3=4, ),",
+			completionOffset:   -2,
+			onlyCheckIfPresent: true,
+			unexpected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg1=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg1=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "arg3=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg3=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg2=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg2=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2055,8 +2219,25 @@ func testResult(t *testing.T, result *protocol.CompletionList, tc completionCase
 		// TODO: Remove this
 		tc.expected.Items[i].Kind = protocol.VariableCompletion
 	}
+
+	for i := range tc.unexpected.Items {
+		tc.unexpected.Items[i].Detail = ""
+		tc.unexpected.Items[i].Kind = protocol.VariableCompletion
+	}
 	if !tc.disable {
-		require.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
+		if tc.onlyCheckIfPresent {
+			for _, item := range tc.expected.Items {
+				assert.Contains(t, result.Items, item)
+			}
+		} else {
+			require.Equal(t, tc.expected, *result, "position", cursorPosition, "file", tc.filename)
+		}
+
+		for _, item := range tc.unexpected.Items {
+			for _, resultItem := range result.Items {
+				assert.NotEqual(t, item, resultItem)
+			}
+		}
 	} else {
 		t.Skipf("Skipping disabled test case %s", tc.name)
 	}

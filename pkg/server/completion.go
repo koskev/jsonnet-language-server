@@ -6,6 +6,7 @@ import (
 	"maps"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -55,7 +56,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 			log.Errorf("Unable to find node position: %v", err)
 			return nil, err
 		}
-		items := s.completeGlobal([]string{info.Index}, searchStack, params.Position)
+		items := s.completeGlobal(info, searchStack, params.Position)
 		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 
 	case cst.CompleteImport:
@@ -845,14 +846,72 @@ func getCompletionLine(fileContent string, position protocol.Position) string {
 	return line
 }
 
-func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
+func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
+	items := []protocol.CompletionItem{}
+	if info.FunctionNode == nil {
+		return nil
+	}
+	// Get the function arguments to complete
+	// TODO: create function with stack parameter and pos to find the node?
+	// TODO: Function to resolve apply from var
+	foundNode, err := processing.FindNodeByPosition(stack.PeekFront(), position.CSTToAST(info.FunctionNode.StartPosition()))
+	if err != nil {
+		log.Errorf("Could not get node for completing function arg names")
+		return items
+	}
+	nextApplyNode, _, err := foundNode.FindNext(reflect.TypeFor[*ast.Apply]())
+	if err != nil {
+		log.Errorf("Could not find apply node in stack")
+		return items
+	}
+	applyNode, ok := nextApplyNode.(*ast.Apply)
+	if !ok {
+		return items
+	}
+	var functionNode *ast.Function
+	switch currentNode := applyNode.Target.(type) {
+	case *ast.Var:
+		resolved, err := processing.ResolveVar(currentNode, stack)
+		if err != nil {
+			return nil
+		}
+		var ok bool
+		functionNode, ok = resolved.(*ast.Function)
+		if !ok {
+			return nil
+		}
+
+	case *ast.Function:
+		functionNode = currentNode
+	}
+
+	// FUCK YOU GO AND YOUR MISSING FEATURES! This is overly complicated because you lack basic features like iterators....
+	setNamedArgs := []string{}
+
+	for _, arg := range applyNode.Arguments.Named {
+		setNamedArgs = append(setNamedArgs, string(arg.Name))
+	}
+
+	for i, param := range functionNode.Parameters {
+		// Skip i unnamed parameters as they are already set
+		if i >= len(applyNode.Arguments.Positional) && !slices.Contains(setNamedArgs, string(param.Name)) {
+			items = append(items, createCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
+		}
+	}
+
+	return items
+}
+
+func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
 	log.Tracef("##### Global path")
 	items := []protocol.CompletionItem{}
 	addSelf := false
 	addSuper := false
 	// TODO: determine when we can add a local
 	addLocal := true
-	// firstIndex is a variable (local) completion
+
+	items = append(items, s.completeFunctionArguments(info, stack, pos)...)
+
 	for !stack.IsEmpty() {
 		curr := stack.Pop()
 		var binds ast.LocalBinds
@@ -894,7 +953,7 @@ func (s *Server) completeGlobal(indexes []string, stack *nodestack.NodeStack, po
 
 	filteredItems := []protocol.CompletionItem{}
 	for _, item := range items {
-		if strings.HasPrefix(item.Label, indexes[0]) && item.Label != "$" && (!strings.HasPrefix(item.Label, "#") || !s.configuration.ShowDocstringInCompletion) {
+		if strings.HasPrefix(item.Label, info.Index) && item.Label != "$" && (!strings.HasPrefix(item.Label, "#") || !s.configuration.ShowDocstringInCompletion) {
 			filteredItems = append(filteredItems, item)
 		}
 	}
