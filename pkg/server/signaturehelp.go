@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/ast/processing"
+	"github.com/grafana/jsonnet-language-server/pkg/cst"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
@@ -90,7 +91,7 @@ func (s *Server) SignatureHelp(_ context.Context, params *protocol.SignatureHelp
 
 	node, err := getFunctionCallNode(stack)
 	if err != nil {
-		return nil, fmt.Errorf("getting current function node")
+		return nil, fmt.Errorf("getting current function node: %w", err)
 	}
 	// Go to definition
 	// Get node
@@ -115,23 +116,18 @@ func (s *Server) SignatureHelp(_ context.Context, params *protocol.SignatureHelp
 			Label: string(param.Name),
 		})
 	}
-	signatureInfo.Label = fmt.Sprintf("%s(%s)", funcName, strings.Join(paramsString, ", "))
-	signatureInfo.ActiveParameter = uint32(len(node.Arguments.Positional))
-	// TODO: this does not work since the ast still has the old info with the old name. Therefore moving at the space before the old name or a new line this breaks.
-	// Let's see if I can find an AST solution and not a line/text based
-	for i, sourceParam := range node.Arguments.Positional {
-		r := *sourceParam.Expr.Loc()
-		// Allow a leading space or similar
-		r.Begin.Column--
-		if processing.InRange(position.ProtocolToAST(params.Position), r) {
-			signatureInfo.ActiveParameter = uint32(i)
-			break
-		}
+
+	pos, err := cst.GetParamPos(doc.Item.Text, position.ProtocolToCST(params.Position))
+	if err != nil {
+		return nil, fmt.Errorf("getting parameter pos: %w", err)
 	}
+	signatureInfo.Label = fmt.Sprintf("%s(%s)", funcName, strings.Join(paramsString, ", "))
+	signatureInfo.ActiveParameter = pos
 	signatures = append(signatures, signatureInfo)
 
 	return &protocol.SignatureHelp{
 		Signatures:      signatures,
 		ActiveSignature: uint32(len(signatures) - 1),
+		ActiveParameter: pos,
 	}, nil
 }

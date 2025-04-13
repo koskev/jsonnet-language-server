@@ -175,3 +175,24 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 
 	return &info, nil
 }
+
+func GetParamPos(content string, pos tree_sitter.Point) (uint32, error) {
+	tree, err := NewTree(context.Background(), content)
+	if err != nil {
+		return 0, fmt.Errorf("getting param position")
+	}
+
+	var count uint32
+	node := tree.DescendantForPointRange(pos, pos)
+	// If we hit the last bracket, we'll just use the previous node
+	if IsNode(node, NodeClosingBracket) {
+		node = GetPrevNode(node)
+	}
+	for node != nil && !IsNode(node, NodeOpeningBracket) {
+		node = node.PrevNamedSibling()
+		if node != nil && !IsSymbolNode(node) {
+			count++
+		}
+	}
+	return count, nil
+}
