@@ -24,6 +24,7 @@ const (
 	NodeSemicolon            = ";"
 	NodeFieldAccess          = "fieldaccess"
 	NodeFunctionCall         = "functioncall"
+	NodeFunction             = "function"
 	NodeID                   = "id"
 	NodeLocalBind            = "local_bind"
 	NodeLocal                = "local"
@@ -35,6 +36,7 @@ const (
 	NodeStringStart          = "string_start"
 	NodeString               = "string"
 	NodeArgs                 = "args"
+	NodeNumber               = "number"
 )
 
 func NewTree(_ context.Context, content string) (*sitter.Node, error) {
@@ -174,4 +176,18 @@ func GetLastChildType(node *sitter.Node, nodeType NodeType, recursive bool) (*si
 		return foundChild, nil
 	}
 	return nil, fmt.Errorf("unable to find child for type %s", nodeType)
+}
+
+func RunForEveryNode(node *sitter.Node, execFunc func(sitter.Node)) {
+	if node == nil {
+		return
+	}
+	cursor := node.Walk()
+	children := node.Children(cursor)
+	for _, child := range children {
+		execFunc(child)
+	}
+	for _, child := range children {
+		RunForEveryNode(&child, execFunc)
+	}
 }

@@ -200,7 +200,7 @@ stackLoop:
 			// TODO: this requires us to implement at least $std.$objectFlatMerge due to hidden objects
 			// TODO: special case if var is std -> evaluate // TODO: hidden objects?
 			//nolint:goconst
-			if len(indexList) > 0 && (indexList[0] == "std" || indexList[0] == "$std") {
+			if len(indexList) > 0 && (indexList[0] == utils.StdIdentifier || indexList[0] == "$std") {
 				// Special case: Call std function
 				vm, root, err := s.getAst(currentNode.Loc().FileName, "")
 				if err != nil {
@@ -569,7 +569,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// TODO: Special case: var.Id starts with $ -> internal function and needs to be evaluated
 			// TODO: this requires us to implement at least $std.$objectFlatMerge due to hidden objects
 			// TODO: special case if var is std -> evaluate // TODO: hidden objects?
-			if len(indexList) > 0 && (indexList[0] == "std" || indexList[0] == "$std") {
+			if len(indexList) > 0 && (indexList[0] == utils.StdIdentifier || indexList[0] == "$std") {
 				// Special case: Call std function
 				// Find the filename since not all nodes have it
 				filename := currentNode.Loc().FileName

@@ -135,7 +135,7 @@ func getDiffPosition(newText string, oldText string) int {
 }
 
 func (s *Server) getFixedAst(filename string, newText string, oldText string) (ast.Node, error) {
-	// TODO: use the cst?
+	// TODO: Use treesitter and the lookahead iterator
 	// Try new text without modification
 	ast, err := jsonnet.SnippetToAST(filename, newText)
 	if err == nil {
@@ -229,6 +229,14 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 				TriggerCharacters: []string{"(", ","},
 			},
 			InlayHintProvider: true,
+			SemanticTokensProvider: protocol.SemanticTokensOptions{
+				Range: false,
+				Full:  true,
+				Legend: protocol.SemanticTokensLegend{
+					TokenTypes:     s.GetSemanticTokenTypes(),
+					TokenModifiers: s.GetSemanticTokenModifiers(),
+				},
+			},
 		},
 		ServerInfo: protocol.PServerInfoMsg_initialize{
 			Name:    s.name,

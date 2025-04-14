@@ -13,7 +13,7 @@ func FindNodeByID(stack *nodestack.NodeStack, id ast.Identifier) ast.Node {
 
 	for i := range nodes {
 		node := nodes[len(nodes)-1-i]
-		logrus.Errorf("Searching in node %T", node)
+		logrus.Tracef("Searching in node %T", node)
 		switch curr := node.(type) {
 		case *ast.Function:
 			for _, param := range curr.Parameters {

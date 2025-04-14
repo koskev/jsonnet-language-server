@@ -8,6 +8,7 @@ import (
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
+	"github.com/grafana/jsonnet-language-server/pkg/utils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -36,7 +37,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			tmpStack.Pop()
 		}
 		foundDesugaredObjects = filterSelfScope(p.FindTopLevelObjects(tmpStack))
-	case start == "std":
+	case start == utils.StdIdentifier:
 		return nil, fmt.Errorf("cannot get definition of std lib")
 	case start == "$":
 		// TODO: this fixes local dollar but breaks all other dollars. Find a proper solution
@@ -89,7 +90,7 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 			localIndexList := tempStack.Clone().BuildIndexList()
 			// TODO: this an ugly workaround for extVar and not breaking other stuff
 			// $std are internal calls (for example for loops)
-			if len(localIndexList) == 2 && ((localIndexList[0] == "std" && localIndexList[1] == "extVar") || localIndexList[0] == "$std") {
+			if len(localIndexList) == 2 && ((localIndexList[0] == utils.StdIdentifier && localIndexList[1] == "extVar") || localIndexList[0] == "$std") {
 				// The second call will error if this errors
 				evalResult, _ := p.vm.Evaluate(bodyNode)
 				node, err := jsonnet.SnippetToAST("", evalResult)

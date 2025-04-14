@@ -124,10 +124,6 @@ func (s *Server) SelectionRange(context.Context, *protocol.SelectionRangeParams)
 	return nil, notImplemented("SelectionRange")
 }
 
-func (s *Server) SemanticTokensFull(context.Context, *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
-	return nil, notImplemented("SemanticTokensFull")
-}
-
 func (s *Server) SemanticTokensFullDelta(context.Context, *protocol.SemanticTokensDeltaParams) (interface{}, error) {
 	return nil, notImplemented("SemanticTokensFullDelta")
 }

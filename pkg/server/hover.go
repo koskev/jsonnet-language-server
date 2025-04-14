@@ -42,7 +42,7 @@ func (s *Server) Hover(_ context.Context, params *protocol.HoverParams) (*protoc
 	lineIndex := uint32(node.Loc().Begin.Line) - 1
 	startIndex := uint32(node.Loc().Begin.Column) - 1
 	line := strings.Split(doc.Item.Text, "\n")[lineIndex]
-	if (isIndex || isVar) && strings.HasPrefix(line[startIndex:], "std") {
+	if (isIndex || isVar) && strings.HasPrefix(line[startIndex:], utils.StdIdentifier) {
 		functionNameIndex := startIndex + 4
 		if functionNameIndex < uint32(len(line)) {
 			functionName := utils.FirstWord(line[functionNameIndex:])
