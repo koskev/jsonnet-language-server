@@ -222,6 +222,15 @@ func (s *Server) getTokenMap(root ast.Node) SemanticTokenMap {
 			searchstack.Push(currentNode.Body)
 
 		case *ast.Apply:
+			// Add the args to the search stack to allow coloring function arguments
+			for _, arg := range currentNode.Arguments.Named {
+				searchstack.Push(arg.Arg)
+			}
+
+			for _, arg := range currentNode.Arguments.Positional {
+				searchstack.Push(arg.Expr)
+			}
+
 			targetIndex, ok := currentNode.Target.(*ast.Index)
 			if !ok {
 				break
@@ -252,10 +261,14 @@ func (s *Server) getTokenMap(root ast.Node) SemanticTokenMap {
 			}
 
 			// TODO: only use the stack up until the var?
-			resolved := processing.FindNodeByID(&documentstack, currentNode.Id)
+			resolved := processing.FindNodeByIDWithOptions(&documentstack, currentNode.Id, true)
 			if resolved != nil {
-				if _, ok := resolved.(*ast.Import); ok {
+				switch resolved.(type) {
+				case *ast.Import:
 					nodeType = protocol.ClassType
+				case *ast.Self:
+					modifiers = append(modifiers, protocol.ModDefaultLibrary)
+					nodeType = protocol.VariableType
 				}
 			} else {
 				// TODO: Currently the function arguments are not on the stack. Therefore we can't find function arguments. For now we'll just assume all variables we can't find are function arguments
@@ -268,6 +281,14 @@ func (s *Server) getTokenMap(root ast.Node) SemanticTokenMap {
 			nodeType = protocol.NumberType
 		case *ast.LiteralBoolean:
 			modifiers = append(modifiers, protocol.ModDefaultLibrary)
+		case *ast.Conditional:
+			searchstack.Push(currentNode.BranchFalse)
+			searchstack.Push(currentNode.BranchTrue)
+			searchstack.Push(currentNode.Cond)
+		case *ast.DesugaredObject:
+			for _, assert := range currentNode.Asserts {
+				searchstack.Push(assert)
+			}
 		default:
 			log.Tracef("[SEMANTIC] Unhandled node of type %T", currentNode)
 		}

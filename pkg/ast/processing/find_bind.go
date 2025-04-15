@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func FindNodeByID(stack *nodestack.NodeStack, id ast.Identifier) ast.Node {
+func FindNodeByIDWithOptions(stack *nodestack.NodeStack, id ast.Identifier, skipParameters bool) ast.Node {
 	nodes := append([]ast.Node{}, stack.From)
 	nodes = append(nodes, stack.Stack...)
 	var defaultVal ast.Node
@@ -16,6 +16,9 @@ func FindNodeByID(stack *nodestack.NodeStack, id ast.Identifier) ast.Node {
 		logrus.Tracef("Searching in node %T", node)
 		switch curr := node.(type) {
 		case *ast.Function:
+			if skipParameters {
+				break
+			}
 			for _, param := range curr.Parameters {
 				if param.Name == id && defaultVal == nil {
 					defaultVal = param.DefaultArg
@@ -23,7 +26,7 @@ func FindNodeByID(stack *nodestack.NodeStack, id ast.Identifier) ast.Node {
 			}
 		case *ast.Local:
 			for _, bind := range curr.Binds {
-				logrus.Errorf("Got bind with id %v. Searching for %v, Body %T", bind.Variable, id, bind.Body)
+				logrus.Tracef("Got bind with id %v. Searching for %v, Body %T", bind.Variable, id, bind.Body)
 				if bind.Variable == id {
 					return bind.Body
 				}
@@ -42,6 +45,9 @@ func FindNodeByID(stack *nodestack.NodeStack, id ast.Identifier) ast.Node {
 	// function(a=3) a
 	// function() -> should return 3
 	return defaultVal
+}
+func FindNodeByID(stack *nodestack.NodeStack, id ast.Identifier) ast.Node {
+	return FindNodeByIDWithOptions(stack, id, false)
 }
 
 func FindBindByIDViaStack(stack *nodestack.NodeStack, id ast.Identifier) *ast.LocalBind {
