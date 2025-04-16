@@ -69,7 +69,6 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		importPaths = append(importPaths, currentFileDir)
 		for _, jpath := range importPaths {
 			currentPath := filepath.Join(jpath, currentPath)
-			log.Errorf("PATH: %v", currentPath)
 			files, err := utils.GetAllJsonnetFiles(currentPath)
 			if err != nil {
 				return nil, err
@@ -100,13 +99,13 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 	// prevNode := cst.GetPrevNode(found)
 	searchStack, err := processing.FindNodeByPosition(doc.AST, position.CSTToAST(found.StartPosition()))
 	if err != nil {
-		log.Errorf("######## could not find ast node %v", err)
+		return nil, fmt.Errorf("finding ast node %v", err)
 	}
 
-	log.Errorf("top item %v", reflect.TypeOf(searchStack.Peek()))
+	log.Tracef("top item %v", reflect.TypeOf(searchStack.Peek()))
 
 	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex)
-	log.Errorf("Items: %+v", items)
+	log.Tracef("Items: %+v", items)
 
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 }
@@ -175,10 +174,10 @@ func (s *Server) ResolveApplyArguments(stack *nodestack.NodeStack, documentstack
 	// Get function object first
 stackLoop:
 	for !searchstack.IsEmpty() {
-		log.Errorf("Node type %v", reflect.TypeOf(searchstack.Peek()))
+		log.Tracef("Node type %v", reflect.TypeOf(searchstack.Peek()))
 		switch currentNode := searchstack.Pop().(type) {
 		default:
-			log.Errorf("UNHANDLED IN RESOLVE %v", reflect.TypeOf(currentNode))
+			log.Warnf("UNHANDLED IN RESOLVE %v", reflect.TypeOf(currentNode))
 		case *ast.Import:
 			_, imported, err := s.getAst(currentNode.File.Value, currentNode.LocRange.FileName)
 			if err != nil {
@@ -188,14 +187,14 @@ stackLoop:
 			searchstack.Push(imported)
 
 		case *ast.Index:
-			log.Errorf("INDEX TARGET %v index: %v", reflect.TypeOf(currentNode.Target), currentNode.Index)
+			log.Tracef("INDEX TARGET %v index: %v", reflect.TypeOf(currentNode.Target), currentNode.Index)
 			searchstack.Push(currentNode.Target)
 		case *ast.Function:
 			funcNode = currentNode
 			break stackLoop
 		case *ast.Apply:
 			indexList := stack.Clone().BuildIndexList()
-			log.Errorf("indexList: %v", indexList)
+			log.Tracef("indexList: %v", indexList)
 			// TODO: Special case: var.Id starts with $ -> internal function and needs to be evaluated
 			// TODO: this requires us to implement at least $std.$objectFlatMerge due to hidden objects
 			// TODO: special case if var is std -> evaluate // TODO: hidden objects?
@@ -216,12 +215,12 @@ stackLoop:
 				searchstack.Push(compiled)
 				continue
 			}
-			log.Errorf("FUNC TARGET %v", reflect.TypeOf(currentNode.Target))
+			log.Tracef("FUNC TARGET %v", reflect.TypeOf(currentNode.Target))
 			searchstack.Push(currentNode.Target)
 			applyNode = currentNode
 		case *ast.Var:
 
-			log.Errorf("Var %v", currentNode.Id)
+			log.Tracef("Var %v", currentNode.Id)
 			bind := processing.FindBindByIDViaStack(documentstack, currentNode.Id)
 			if bind != nil {
 				searchstack.Push(bind.Body)
@@ -248,7 +247,7 @@ func (s *Server) addFunctionToStack(applyNode *ast.Apply, funcNode *ast.Function
 	searchstack = searchstack.Clone()
 	// Get all positional arguments first. After that only named arguments remain
 	for i, arg := range applyNode.Arguments.Positional {
-		log.Errorf("Positional argument: %s", funcNode.Parameters[i].Name)
+		log.Tracef("Positional argument: %s", funcNode.Parameters[i].Name)
 		searchstack.Push(&ast.Local{
 			Binds: []ast.LocalBind{{
 				Variable: funcNode.Parameters[i].Name,
@@ -256,7 +255,7 @@ func (s *Server) addFunctionToStack(applyNode *ast.Apply, funcNode *ast.Function
 			}}})
 	}
 	for _, arg := range applyNode.Arguments.Named {
-		log.Errorf("Named argument: %+v", arg)
+		log.Tracef("Named argument: %+v", arg)
 		searchstack.Push(&ast.Local{
 			Binds: []ast.LocalBind{{
 				Variable: arg.Name,
@@ -271,19 +270,19 @@ func (s *Server) buildCallStack(documentstack *nodestack.NodeStack) *nodestack.N
 	node := documentstack.Pop()
 	nodesToSearch := nodestack.NewNodeStack(node)
 	callStack := &nodestack.NodeStack{}
-	log.Errorf("Building call stack from %v", reflect.TypeOf(node))
+	log.Tracef("Building call stack from %v", reflect.TypeOf(node))
 
 	for !nodesToSearch.IsEmpty() {
 		currentNode := nodesToSearch.Pop()
-		log.Errorf("CALL BUILD %v", reflect.TypeOf(currentNode))
+		log.Tracef("CALL BUILD %v", reflect.TypeOf(currentNode))
 		switch currentNode := currentNode.(type) {
 		case *ast.Index:
-			log.Errorf("INDEX TARGET %v", reflect.TypeOf(currentNode.Target))
+			log.Tracef("INDEX TARGET %v", reflect.TypeOf(currentNode.Target))
 			swapNode := false
 			if prevApply, ok := callStack.Peek().(*ast.Apply); ok {
 				if prevApply.Target == currentNode {
 					// If the apply is the current target, we need to swap the order. This way the apply binds get added before the index for the function
-					log.Errorf("REMOVING PREV with target %v", reflect.TypeOf(currentNode.Target))
+					log.Tracef("REMOVING PREV with target %v", reflect.TypeOf(currentNode.Target))
 					swapNode = false
 				}
 			}
@@ -295,7 +294,7 @@ func (s *Server) buildCallStack(documentstack *nodestack.NodeStack) *nodestack.N
 				callStack.Push(currentNode)
 			}
 			nodesToSearch.Push(currentNode.Target)
-			log.Errorf("New target %v %v", reflect.TypeOf(currentNode.Target), currentNode.Index)
+			log.Tracef("New target %v %v", reflect.TypeOf(currentNode.Target), currentNode.Index)
 		case *ast.Var:
 			// TODO: somehow figure out function index stuff
 			if _, ok := callStack.Peek().(*ast.Apply); !ok {
@@ -314,7 +313,7 @@ func (s *Server) buildCallStack(documentstack *nodestack.NodeStack) *nodestack.N
 			}
 		case *ast.Apply:
 			// If callstack top is an index to the same node we'll delete it
-			log.Errorf("TARGET %v", reflect.TypeOf(currentNode.Target))
+			log.Tracef("TARGET %v", reflect.TypeOf(currentNode.Target))
 			callStack.Push(currentNode)
 			nodesToSearch.Push(currentNode.Target)
 		default:
@@ -323,7 +322,7 @@ func (s *Server) buildCallStack(documentstack *nodestack.NodeStack) *nodestack.N
 	}
 
 	for _, n := range callStack.Stack {
-		log.Errorf("## Call: %v", reflect.TypeOf(n))
+		log.Tracef("## Call: %v", reflect.TypeOf(n))
 	}
 	return callStack
 }
@@ -374,12 +373,12 @@ searchLoop:
 	for !searchstack.IsEmpty() {
 		switch currentNode := searchstack.Pop().(type) {
 		case *ast.Local:
-			log.Errorf("body type %v", reflect.TypeOf(currentNode.Body))
+			log.Tracef("body type %v", reflect.TypeOf(currentNode.Body))
 			searchstack.Push(currentNode.Body)
 			objectStack.Push(currentNode.Body)
 
 		default:
-			log.Errorf("Breaking at %v", reflect.TypeOf(currentNode))
+			log.Debugf("Breaking at %v", reflect.TypeOf(currentNode))
 			break searchLoop
 		}
 	}
@@ -405,14 +404,14 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 		return nil
 	}
 
-	log.Errorf("getDesugaredObject start: %+v", reflect.TypeOf(searchstack.Peek()))
+	log.Debugf("getDesugaredObject start: %+v", reflect.TypeOf(searchstack.Peek()))
 	for !searchstack.IsEmpty() {
 		documentstack.Push(searchstack.Peek())
-		log.Errorf("Getting desugared object for %v", reflect.TypeOf(searchstack.Peek()))
+		log.Debugf("Getting desugared object for %v", reflect.TypeOf(searchstack.Peek()))
 		switch currentNode := searchstack.Pop().(type) {
 		case *ast.Var:
-			log.Errorf("#Var %v", currentNode.Id)
-			log.Errorf("next search %v", reflect.TypeOf(callstack.Peek()))
+			log.Debugf("#Var %v", currentNode.Id)
+			log.Debugf("next search %v", reflect.TypeOf(callstack.Peek()))
 			switch currentNode.Id {
 			case "$":
 				// XXX: Dollar is a node and not ast.Dollar. For whatever reason
@@ -420,7 +419,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			default:
 				ref := processing.FindNodeByID(documentstack, currentNode.Id)
 				if ref != nil {
-					log.Errorf("Ref is %v", reflect.TypeOf(ref))
+					log.Debugf("Ref is %v", reflect.TypeOf(ref))
 					searchstack.Push(ref)
 				} else {
 					log.Errorf("Unable to find reference to var %s", currentNode.Id)
@@ -455,10 +454,10 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 					break
 				}
 				if pos-1 != binaryPos {
-					log.Errorf("Pos not matching %+v binpos %+v", pos, binaryPos)
+					log.Debugf("Pos not matching %+v binpos %+v", pos, binaryPos)
 					break
 				}
-				log.Errorf("Found new binary")
+				log.Debugf("Found new binary")
 				//nolint:forcetypeassert // go shit
 				binary = binNode.(*ast.Binary)
 				pos = binaryPos
@@ -509,7 +508,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			}
 
 		case *ast.Import:
-			log.Errorf("Trying to import %s from %s", currentNode.File.Value, currentNode.LocRange.FileName)
+			log.Debugf("Trying to import %s from %s", currentNode.File.Value, currentNode.LocRange.FileName)
 			_, imported, err := s.getAst(currentNode.File.Value, currentNode.LocRange.FileName)
 			if err == nil {
 				// TODO: import has to have a clean stack (otherwise the locals might be weird?) but an import cannot always be a DesugaredObject due to function calls
@@ -544,7 +543,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 		case *ast.Local:
 			// We might push locals without a body e.g. for resolving function parameters
 			if currentNode.Body != nil {
-				log.Errorf("#### Local %v", reflect.TypeOf(currentNode.Body))
+				log.Tracef("Local %v", reflect.TypeOf(currentNode.Body))
 				documentstack.Push(currentNode.Body)
 				obj := s.buildDesugaredObject(documentstack)
 				if obj != nil {
@@ -554,7 +553,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 		// There might be indices in imports
 		case *ast.Index:
 
-			log.Errorf("Index with name %v", currentNode.Index)
+			log.Tracef("Index with name %v", currentNode.Index)
 			obj := s.buildDesugaredObject(documentstack)
 			if obj != nil {
 				searchstack.Push(obj)
@@ -565,7 +564,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			searchstack.Push(currentNode.Left)
 		case *ast.Apply:
 			indexList := nodestack.NewNodeStack(currentNode).BuildIndexList()
-			log.Errorf("indexList: %v", indexList)
+			log.Tracef("indexList: %v", indexList)
 			// TODO: Special case: var.Id starts with $ -> internal function and needs to be evaluated
 			// TODO: this requires us to implement at least $std.$objectFlatMerge due to hidden objects
 			// TODO: special case if var is std -> evaluate // TODO: hidden objects?
@@ -589,9 +588,9 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				}
 				searchstack.Push(compiled)
 				if desugar, ok := compiled.(*ast.DesugaredObject); ok {
-					log.Errorf("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
+					log.Tracef("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
 				}
-				log.Errorf("Compiled! %+v", reflect.TypeOf(compiled))
+				log.Debugf("Compiled! %+v", reflect.TypeOf(compiled))
 				continue
 			}
 			searchstack.Push(currentNode.Target)
@@ -605,11 +604,11 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			//nolint:forcetypeassert // Due to the lack of features in go FindNext can't be a generic with a proper return type
 			applyNode := foundNode.(*ast.Apply)
 			searchstack.Push(currentNode.Body)
-			log.Errorf("pushed %T", currentNode.Body)
+			log.Tracef("pushed %T", currentNode.Body)
 
 			// Get all positional arguments first. After that only named arguments remain
 			for i, arg := range applyNode.Arguments.Positional {
-				log.Errorf("XXXXXXXXXXXXXXXXXXXX Positional argument: %s", currentNode.Parameters[i].Name)
+				log.Tracef("Positional argument: %s", currentNode.Parameters[i].Name)
 				searchstack.Push(&ast.Local{
 					Binds: []ast.LocalBind{{
 						Variable: currentNode.Parameters[i].Name,
@@ -617,7 +616,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 					}}})
 			}
 			for _, arg := range applyNode.Arguments.Named {
-				log.Errorf("Named argument: %+v", arg)
+				log.Tracef("Named argument: %+v", arg)
 				searchstack.Push(&ast.Local{
 					Binds: []ast.LocalBind{{
 						Variable: arg.Name,
@@ -628,7 +627,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 		case *ast.Dollar:
 			myStack := documentstack.Clone()
 			for !myStack.IsEmpty() {
-				log.Errorf("DOLLAR %v", reflect.TypeOf(myStack.PeekFront()))
+				log.Tracef("DOLLAR %v", reflect.TypeOf(myStack.PeekFront()))
 				switch dollarSearchNode := myStack.PopFront().(type) {
 				// TODO: this only returns the outer most object. But we want the outer most object inside the current local
 				case *ast.DesugaredObject:
@@ -661,7 +660,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				continue
 			}
 
-			log.Errorf("ARRAY %+v", currentNode)
+			log.Tracef("ARRAY %+v", currentNode)
 			callstack.PrintStack()
 			indexVal, ok := indexNode.Index.(*ast.LiteralNumber)
 			if !ok {
@@ -714,7 +713,7 @@ func (s *Server) resolveConditional(node *ast.Conditional, documentstack *nodest
 func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.DesugaredObject {
 	callstack := s.buildCallStack(documentstack)
 
-	log.Errorf("Callstack %+v", callstack)
+	log.Debugf("Callstack %+v", callstack)
 	// First object is var or func -> resolve to desugared object (including their keys)
 	baseObject := s.getDesugaredObject(callstack, documentstack)
 	if baseObject == nil {
@@ -725,18 +724,18 @@ func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.D
 stackLoop:
 	for !callstack.IsEmpty() && baseObject != nil {
 		callNode := callstack.Pop()
-		log.Errorf("Looking at call %v", reflect.TypeOf(callNode))
+		log.Debugf("Looking at call %v", reflect.TypeOf(callNode))
 		// nolint: gocritic // I might need more cases here
 		switch callNode := callNode.(type) {
 		// Resolve arguments and push them to the stack
 		case *ast.Apply:
-			log.Errorf("UNHANDLED APPLY!")
+			log.Warnf("UNHANDLED APPLY in Callstack")
 		// Search the current DesugaredObject and get the body for this index
 		case *ast.Index:
 			// TODO: get sub
 			// TODO: keep local binds. Just push the parent object to the stack?
 			// log.Errorf("Call node %+v", callNode)
-			log.Errorf("Index %+v %v", callNode.Index, reflect.TypeOf(callNode.Target))
+			log.Debugf("Index %+v %v", callNode.Index, reflect.TypeOf(callNode.Target))
 			// GIVE ME FUCKING ITERATORS!! this really seems just like C + gc... even js has proper iterators. FUCKING JS!
 			// Just look at this for mess. This would be a simple filter with proper iterators
 
@@ -745,7 +744,7 @@ stackLoop:
 			if !ok {
 				continue
 			}
-			log.Errorf("Finding %s in %s", indexName.Value, DesugaredObjectFieldsToString(baseObject))
+			log.Debugf("Finding %s in %s", indexName.Value, DesugaredObjectFieldsToString(baseObject))
 			// Look at all fields of the desugared object
 			for _, field := range baseObject.Fields {
 				fieldName, ok := field.Name.(*ast.LiteralString)
@@ -759,7 +758,7 @@ stackLoop:
 					funcNode, funcOk := field.Body.(*ast.Function)
 					applyNode, applyOk := callstack.Peek().(*ast.Apply)
 					var newDesugar *ast.DesugaredObject
-					log.Errorf("Apply func %v %v", applyOk, funcOk)
+					log.Tracef("Apply func %v %v", applyOk, funcOk)
 					if applyOk && funcOk {
 						// Pop the apply Node
 						callstack.Pop()
@@ -769,7 +768,7 @@ stackLoop:
 						}
 						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(stack.Peek()), documentstack)
 					} else {
-						log.Errorf("Found field %s", indexName.Value)
+						log.Debugf("Found field %s", indexName.Value)
 						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
 					}
 					if newDesugar != nil {
@@ -785,7 +784,7 @@ stackLoop:
 			return nil
 		}
 	}
-	log.Errorf("finished object: %v", DesugaredObjectFieldsToString(baseObject))
+	log.Debugf("finished object: %v", DesugaredObjectFieldsToString(baseObject))
 	return baseObject
 }
 
@@ -797,7 +796,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 	if topIndex, ok := searchstack.Peek().(*ast.Index); ok && !noEndIndex {
 		if indexNode, ok := topIndex.Index.(*ast.LiteralString); ok {
 			indexName = indexNode.Value
-			log.Errorf("Removing %s from stack", indexName)
+			log.Debugf("Removing %s from stack", indexName)
 			searchstack.Pop()
 			// TODO: If different breaks TestCompletion/completion_in_function_arguments
 			if searchstack.Peek() != topIndex.Target {
@@ -812,7 +811,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 	//	log.Errorf("%s", t)
 	// }
 
-	log.Errorf("Searching completion for %v at %v", reflect.TypeOf(searchstack.Peek()), pos)
+	log.Debugf("Searching completion for %v at %v", reflect.TypeOf(searchstack.Peek()), pos)
 	object := s.buildDesugaredObject(searchstack)
 	if object == nil {
 		return items
@@ -829,7 +828,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		if nameNode, ok := field.Name.(*ast.LiteralString); ok {
 			if strings.HasPrefix(nameNode.Value, indexName) {
 				items = append(items,
-					createCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
+					s.createCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
 				)
 			}
 		}
@@ -895,7 +894,7 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 	for i, param := range functionNode.Parameters {
 		// Skip i unnamed parameters as they are already set
 		if i >= len(applyNode.Arguments.Positional) && !slices.Contains(setNamedArgs, string(param.Name)) {
-			items = append(items, createCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
+			items = append(items, s.createCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
 		}
 	}
 
@@ -931,24 +930,24 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 			binds = typedCurr.Binds
 		case *ast.Function:
 			for _, param := range typedCurr.Parameters {
-				items = append(items, createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
+				items = append(items, s.createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
 			}
 		default:
 			break
 		}
 		for _, bind := range binds {
 			label := string(bind.Variable)
-			items = append(items, createCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
+			items = append(items, s.createCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
 		}
 	}
 	if addSelf {
-		items = append(items, createCompletionItem("self", "", protocol.VariableCompletion, &ast.Self{}, pos, false))
+		items = append(items, s.createCompletionItem("self", "", protocol.VariableCompletion, &ast.Self{}, pos, false))
 	}
 	if addSuper {
-		items = append(items, createCompletionItem("super", "", protocol.VariableCompletion, &ast.SuperIndex{}, pos, false))
+		items = append(items, s.createCompletionItem("super", "", protocol.VariableCompletion, &ast.SuperIndex{}, pos, false))
 	}
 	if addLocal {
-		items = append(items, createCompletionItem("local", "", protocol.VariableCompletion, &ast.Local{}, pos, false))
+		items = append(items, s.createCompletionItem("local", "", protocol.VariableCompletion, &ast.Local{}, pos, false))
 	}
 
 	filteredItems := []protocol.CompletionItem{}
@@ -1010,7 +1009,7 @@ func formatLabel(str string) string {
 }
 
 //nolint:unparam // Currently prefix is always called with ""
-func createCompletionItem(label, prefix string, kind protocol.CompletionItemKind, body ast.Node, position protocol.Position, tryEscape bool) protocol.CompletionItem {
+func (s *Server) createCompletionItem(label, prefix string, kind protocol.CompletionItemKind, body ast.Node, position protocol.Position, tryEscape bool) protocol.CompletionItem {
 	paramsString := ""
 	if asFunc, ok := body.(*ast.Function); ok {
 		kind = protocol.FunctionCompletion
@@ -1038,6 +1037,10 @@ func createCompletionItem(label, prefix string, kind protocol.CompletionItemKind
 		characterStartPosition = position.Character
 	}
 	detail := prefix + concat + insertText
+
+	if s.configuration.UseTypeInDetail {
+		detail = typeToString(body)
+	}
 
 	item := protocol.CompletionItem{
 		Label:  label,

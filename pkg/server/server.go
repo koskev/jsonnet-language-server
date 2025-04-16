@@ -94,7 +94,6 @@ func (s *Server) DidChange(_ context.Context, params *protocol.DidChangeTextDocu
 		oldText := doc.Item.Text
 		// TODO: this is not LSP compatible. A change event might be limited by the range
 		doc.Item.Text = params.ContentChanges[len(params.ContentChanges)-1].Text
-		log.Errorf("CHANGES %+v", params)
 
 		var ast ast.Node
 		// Since go is stupid we are unable to get the internal error type and thus cannot get the error location. Nice one!
@@ -165,12 +164,12 @@ func (s *Server) getFixedAst(filename string, newText string, oldText string) (a
 		testText := newText[:lineEndingLocation] + ending + newText[lineEndingLocation:]
 		ast, err := jsonnet.SnippetToAST(filename, testText)
 		if err == nil {
-			log.Errorf("Fixed ast with %v", ending)
+			log.Infof("Fixed ast with %v", ending)
 			return ast, nil
 		}
 	}
 
-	log.Errorf("Unable to fix ast!")
+	log.Warnf("Unable to fix ast!")
 	return nil, fmt.Errorf("unable to fix ast")
 }
 

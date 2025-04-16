@@ -265,7 +265,7 @@ func (s *Server) getTokenMap(root ast.Node) SemanticTokenMap {
 			if resolved != nil {
 				switch resolved.(type) {
 				case *ast.Import:
-					nodeType = protocol.ClassType
+					nodeType = protocol.NamespaceType
 				case *ast.Self:
 					modifiers = append(modifiers, protocol.ModDefaultLibrary)
 					nodeType = protocol.VariableType
@@ -306,6 +306,9 @@ func (s *Server) getTokenMap(root ast.Node) SemanticTokenMap {
 func (s *Server) SemanticTokensFull(_ context.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
 	tokens := protocol.SemanticTokens{
 		Data: []uint32{},
+	}
+	if !s.configuration.EnableSemanticTokens {
+		return &tokens, nil
 	}
 
 	doc, err := s.cache.Get(params.TextDocument.URI)

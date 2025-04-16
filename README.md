@@ -52,6 +52,8 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 | enable_debug_ast | bool    | Enables debug ast hints |
 | enable_index_value | bool     | Resolves some index values |
 | enable_function_args    | bool    | Shows the names of unnamed parameters in functions |
+| enable_semantic_tokens    | bool    | Enables semantic tokens |
+| use_type_in_detail    | bool    | Puts the target type in the `detail` field. Try this if you don't see any type info |
 
 
 ### Jump to definition

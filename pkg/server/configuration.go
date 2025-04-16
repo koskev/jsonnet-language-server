@@ -34,12 +34,14 @@ type Configuration struct {
 	ShowDocstringInCompletion bool
 	MaxInlayLength            int
 	Inlay                     ConfigurationInlay
-	// Evaluates conditionals instead of just adding both
-	EvaluateConditionals bool
+
+	EnableSemanticTokens bool
+	UseTypeInDetail      bool
 }
 
+//nolint:gocyclo
 func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidChangeConfigurationParams) error {
-	settingsMap, ok := params.Settings.(map[string]interface{})
+	settingsMap, ok := params.Settings.(map[string]any)
 	if !ok {
 		return fmt.Errorf("%w: unsupported settings payload. expected json object, got: %T", jsonrpc2.ErrInvalidParams, params.Settings)
 	}
@@ -134,6 +136,19 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 				return fmt.Errorf("unmarshalling inlay config: %w", err)
 			}
 			s.configuration.Inlay = inlayConfig
+		case "enable_semantic_tokens":
+			if boolVal, ok := sv.(bool); ok {
+				s.configuration.EnableSemanticTokens = boolVal
+			} else {
+				return fmt.Errorf("%w: unsupported settings value for enable_semantic_tokens. expected boolean. got: %T", jsonrpc2.ErrInvalidParams, sv)
+			}
+
+		case "use_type_in_detail":
+			if boolVal, ok := sv.(bool); ok {
+				s.configuration.UseTypeInDetail = boolVal
+			} else {
+				return fmt.Errorf("%w: unsupported settings value for use_type_in_detail. expected boolean. got: %T", jsonrpc2.ErrInvalidParams, sv)
+			}
 
 		default:
 			return fmt.Errorf("%w: unsupported settings key: %q", jsonrpc2.ErrInvalidParams, sk)

@@ -57,7 +57,6 @@ func getCurrentIndex(content string, pos protocol.Position) string {
 
 	for {
 		currentRune := rune(content[currentPos])
-		log.Errorf("Current rune '%v'", string(currentRune))
 		if slices.Contains(endingTokens, currentRune) {
 			break
 		}
@@ -105,7 +104,7 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	currentIndex := getCurrentIndex(content, pos)
 	// Replace the pos with the next non whitespace token. This way we don't need a special case for stuff like "," and ", ". E.g. for checking if we are inside a function call
 	pos = getNextNonWhitespacePosition(content, pos)
-	log.Errorf("################# current index %v from %+v", currentIndex, pos)
+	log.Tracef("current index %v from %+v", currentIndex, pos)
 	// Default to local completion
 	info.CompletionType = CompleteLocal
 
@@ -114,7 +113,7 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 		return nil, err
 	}
 	found := GetNodeAtPos(root, position.ProtocolToCST(pos))
-	log.Errorf("#Found: %v (%+v)", found.GrammarName(), found.Range())
+	log.Tracef("Found: %v (%+v)", found.GrammarName(), found.Range())
 
 	if !strings.Contains(currentIndex, ".") {
 		info.CompletionType = CompleteGlobal
@@ -212,7 +211,7 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	//	found = GetNonSymbolNode(GetLastChild(fieldAccessNode))
 	// }
 	info.Node = found
-	log.Errorf("Found end: %+v (%+v)", found.GrammarName(), found.StartPosition())
+	log.Tracef("Found end: %+v (%+v)", found.GrammarName(), found.StartPosition())
 
 	return &info, nil
 }

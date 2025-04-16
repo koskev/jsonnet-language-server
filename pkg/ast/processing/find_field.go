@@ -101,7 +101,6 @@ func (p *Processor) FindRangesFromIndexList(stack *nodestack.NodeStack, indexLis
 					break
 				}
 			}
-			log.Errorf("Prev index %v new index %v", indexList, tempStack.Clone().BuildIndexList())
 			// for err or non special case
 			indexList = append(tempStack.BuildIndexList(), indexList...)
 			return p.FindRangesFromIndexList(stack, indexList, partialMatchFields)

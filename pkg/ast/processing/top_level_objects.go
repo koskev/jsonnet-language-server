@@ -49,18 +49,16 @@ func (p *Processor) FindTopLevelObjects(stack *nodestack.NodeStack) []*ast.Desug
 			if !indexIsString {
 				continue
 			}
-			log.Errorf("string %s", indexValue.Value)
 
 			var container ast.Node
 			// If our target is a var, the container for the index is the var ref
 			if varTarget, targetIsVar := curr.Target.(*ast.Var); targetIsVar {
-				log.Errorf("is var %v with target %v", varTarget.Id, reflect.TypeOf(curr))
+				log.Tracef("is var %v with target %v", varTarget.Id, reflect.TypeOf(curr))
 				ref, err := p.FindVarReference(varTarget)
 				if err != nil {
 					log.WithError(err).Errorf("Error finding var reference, ignoring this node")
 					continue
 				}
-				log.Errorf("found ref")
 				container = ref
 			}
 
@@ -69,7 +67,6 @@ func (p *Processor) FindTopLevelObjects(stack *nodestack.NodeStack) []*ast.Desug
 				container = stack.Peek()
 			}
 
-			log.Errorf("searching for possible objects")
 			var possibleObjects []*ast.DesugaredObject
 			if containerObj, containerIsObj := container.(*ast.DesugaredObject); containerIsObj {
 				possibleObjects = []*ast.DesugaredObject{containerObj}
