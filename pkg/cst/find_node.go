@@ -113,6 +113,9 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 		return nil, err
 	}
 	found := GetNodeAtPos(root, position.ProtocolToCST(pos))
+	if found == nil {
+		return nil, fmt.Errorf("unable to find tree node at %+v", pos)
+	}
 	log.Tracef("Found: %v (%+v)", found.GrammarName(), found.Range())
 
 	if !strings.Contains(currentIndex, ".") {
@@ -140,7 +143,9 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 	switch found.GrammarName() {
 	// In import
 	case NodeStringStart:
-		found = found.NextSibling()
+		if found.NextSibling() != nil {
+			found = found.NextSibling()
+		}
 		fallthrough
 	case NodeStringContent:
 		stringNode := found.Parent()

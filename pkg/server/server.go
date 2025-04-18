@@ -145,7 +145,7 @@ func (s *Server) getFixedAst(filename string, newText string, oldText string) (a
 	lineEndingLocation := strings.Index(newText[diffLocation:], "\n") + diffLocation
 	removeEndings := []rune{'.', ','}
 	// Add ".a" to fix "super". This will insert an extra index, but it doesn't seem to break anything
-	addEndings := []string{";", "),", ",", ")", "[]", "{}", ".a", "]", "],"}
+	addEndings := []string{";", "),", ",", ")", "[]", "{}", ".a", "]", "],", `";`}
 
 	// First remove all endings
 	for len(newText) > 0 && lineEndingLocation > 0 && slices.Contains(removeEndings, rune(newText[lineEndingLocation-1])) {
