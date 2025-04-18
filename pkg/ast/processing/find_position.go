@@ -33,9 +33,11 @@ func FindNodeByPositionForReference(node ast.Node, location ast.Location) (*node
 		inRange := InRange(location, *curr.Loc())
 		if inRange {
 			searchStack.Push(curr)
-		} else if curr.Loc().End.IsSet() {
-			continue
 		}
+		// else if curr.Loc().End.IsSet() {
+		// TODO: Why was this needed?
+		// TODO: reimplement this function
+		// continue
 
 		switch curr := curr.(type) {
 		case *ast.DesugaredObject:

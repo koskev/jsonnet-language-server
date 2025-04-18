@@ -51,7 +51,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 
 	switch info.CompletionType {
 	case cst.CompleteGlobal:
-		searchStack, err := processing.FindNodeByPosition(doc.AST, position.ProtocolToAST(params.Position))
+		searchStack, err := processing.FindNodeByPositionForReference(doc.AST, position.ProtocolToAST(params.Position))
 		if err != nil {
 			log.Errorf("Unable to find node position: %v", err)
 			return nil, err
@@ -853,7 +853,7 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 	// Get the function arguments to complete
 	// TODO: create function with stack parameter and pos to find the node?
 	// TODO: Function to resolve apply from var
-	foundNode, err := processing.FindNodeByPosition(stack.PeekFront(), position.CSTToAST(info.FunctionNode.EndPosition()))
+	foundNode, err := processing.FindNodeByPositionForReference(stack.PeekFront(), position.CSTToAST(info.FunctionNode.EndPosition()))
 	if err != nil {
 		log.Errorf("Could not get node for completing function arg names")
 		return items

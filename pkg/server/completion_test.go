@@ -2138,9 +2138,30 @@ func TestCompletion(t *testing.T) {
 		{
 			name:               "named function args for imported",
 			filename:           "./testdata/complete/functionargs.jsonnet",
-			replaceString:      "c: builder.new('test'),",
+			replaceString:      "c: builder.new('test').withVal(1),",
 			replaceByString:    "c: builder.new(),",
 			completionOffset:   -2,
+			onlyCheckIfPresent: true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "name=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "name=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:               "named function args in prev arg for imported",
+			filename:           "./testdata/complete/functionargs.jsonnet",
+			replaceString:      "c: builder.new('test').withVal(1),",
+			replaceByString:    "c: builder.new().withVal(1),",
+			completionOffset:   -13,
 			onlyCheckIfPresent: true,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
