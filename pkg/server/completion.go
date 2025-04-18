@@ -853,7 +853,7 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 	// Get the function arguments to complete
 	// TODO: create function with stack parameter and pos to find the node?
 	// TODO: Function to resolve apply from var
-	foundNode, err := processing.FindNodeByPosition(stack.PeekFront(), position.CSTToAST(info.FunctionNode.StartPosition()))
+	foundNode, err := processing.FindNodeByPosition(stack.PeekFront(), position.CSTToAST(info.FunctionNode.EndPosition()))
 	if err != nil {
 		log.Errorf("Could not get node for completing function arg names")
 		return items
@@ -868,20 +868,56 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 		return items
 	}
 	var functionNode *ast.Function
-	switch currentNode := applyNode.Target.(type) {
-	case *ast.Var:
-		resolved, err := processing.ResolveVar(currentNode, stack)
-		if err != nil {
-			return nil
-		}
-		var ok bool
-		functionNode, ok = resolved.(*ast.Function)
-		if !ok {
-			return nil
-		}
 
-	case *ast.Function:
-		functionNode = currentNode
+	// only resolve if we have an index. Otherwise we just have the function call
+	if indexNode, ok := foundNode.Peek().(*ast.Index); ok {
+		indexName, ok := indexNode.Index.(*ast.LiteralString)
+		if !ok {
+			return items
+		}
+		foundNode.Pop()
+		foundNode.Push(indexNode.Target)
+		obj := s.buildDesugaredObject(foundNode)
+		if obj == nil {
+			return items
+		}
+		for _, field := range obj.Fields {
+			if name, ok := field.Name.(*ast.LiteralString); ok {
+				if name.Value != indexName.Value {
+					continue
+				}
+				if funcNode, ok := field.Body.(*ast.Function); ok {
+					functionNode = funcNode
+				}
+			}
+		}
+	} else {
+		searchstack := nodestack.NewNodeStack(applyNode.Target)
+		for !searchstack.IsEmpty() {
+			currentNode := searchstack.Pop()
+			switch currentNode := currentNode.(type) {
+			case *ast.Var:
+				resolved, err := processing.ResolveVar(currentNode, stack)
+				if err != nil {
+					return nil
+				}
+				searchstack.Push(resolved)
+
+			case *ast.Function:
+				functionNode = currentNode
+			case *ast.Index:
+				searchstack.Push(currentNode.Target)
+			case *ast.Import:
+				log.Debugf("Trying to import %s from %s", currentNode.File.Value, currentNode.LocRange.FileName)
+				_, imported, err := s.getAst(currentNode.File.Value, currentNode.LocRange.FileName)
+				if err == nil {
+					searchstack.Push(imported)
+				}
+
+			default:
+				log.Errorf("Unhandled %T", currentNode)
+			}
+		}
 	}
 
 	// FUCK YOU GO AND YOUR MISSING FEATURES! This is overly complicated because you lack basic features like iterators....
@@ -889,6 +925,11 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 
 	for _, arg := range applyNode.Arguments.Named {
 		setNamedArgs = append(setNamedArgs, string(arg.Name))
+	}
+
+	if functionNode == nil {
+		log.Errorf("Could not find function node")
+		return items
 	}
 
 	for i, param := range functionNode.Parameters {

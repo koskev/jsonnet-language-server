@@ -260,8 +260,12 @@ func (s *Server) getTokenMap(root ast.Node) SemanticTokenMap {
 				break
 			}
 
-			// TODO: only use the stack up until the var?
-			resolved := processing.FindNodeByIDWithOptions(&documentstack, currentNode.Id, true)
+			stackForNode, err := processing.FindNodeInStack(currentNode, &documentstack)
+			if err != nil {
+				log.Errorf("Could not find %s in documentstack: %v", currentNode.Id, err)
+				continue
+			}
+			resolved := processing.FindNodeByIDWithOptions(stackForNode, currentNode.Id, true)
 			if resolved != nil {
 				switch resolved.(type) {
 				case *ast.Import:

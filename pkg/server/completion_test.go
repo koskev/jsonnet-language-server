@@ -862,7 +862,7 @@ func TestCompletion(t *testing.T) {
 			filename:        "./testdata/complete/functionargs.jsonnet",
 			replaceString:   "arg.coolkey,",
 			replaceByString: "a",
-			lineOverride:    3,
+			lineOverride:    5,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
@@ -883,7 +883,7 @@ func TestCompletion(t *testing.T) {
 			filename:        "./testdata/complete/functionargs.jsonnet",
 			replaceString:   "arg.coolkey,",
 			replaceByString: "arg.",
-			lineOverride:    3,
+			lineOverride:    5,
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
@@ -2128,6 +2128,27 @@ func TestCompletion(t *testing.T) {
 						Label:      "arg2=",
 						Kind:       protocol.FieldCompletion,
 						InsertText: "arg2=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:               "named function args for imported",
+			filename:           "./testdata/complete/functionargs.jsonnet",
+			replaceString:      "c: builder.new('test'),",
+			replaceByString:    "c: builder.new(),",
+			completionOffset:   -2,
+			onlyCheckIfPresent: true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "name=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "name=",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "variable",
 						},

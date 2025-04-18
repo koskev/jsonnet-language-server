@@ -125,7 +125,14 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 			parent = parent.Parent()
 		}
 		if IsNode(parent, NodeFunctionCall) {
+			if IsNode(parent.Child(0), NodeFieldAccess) {
+				parent = parent.Child(0)
+			}
 			info.FunctionNode = parent
+			idNode, err := GetLastChildType(parent, NodeID, false)
+			if err == nil {
+				info.FunctionNode = idNode
+			}
 		}
 	}
 
