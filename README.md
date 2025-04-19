@@ -29,7 +29,8 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
     * Complete import function calls (import 'a.libsonnet')("myArg").val
     * Support super completion
     * Complete keywords (super, self, local)
-    * Complete conditionals (function argument conditions are still TODO)
+    * Complete conditionals
+      * Currently not all conditions are supported
     * Complete array access
     * Complete unused argument names: myFunc(1, arg3=3, ar**g3=**),
   * Basic automatic ast fix
@@ -37,6 +38,9 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
     * Only the basic stuff. It is assumed you are also using something like tree sitter
 
 ### TODO
+ * Reimplement
+    * Go to definition
+    * Inlay hints
  * Refactor/Cleanup new features
  * General cleanup after understanding more lsp stuff
  * Code actions?
@@ -54,6 +58,11 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 | enable_function_args    | bool    | Shows the names of unnamed parameters in functions |
 | enable_semantic_tokens    | bool    | Enables semantic tokens |
 | use_type_in_detail    | bool    | Puts the target type in the `detail` field. Try this if you don't see any type info |
+
+#### workarounds
+| Key    | type | description |
+| -------- | ------- | ------- |
+| assume_true_condition_on_error | bool    | Assumes all conditions to be true if they run into an error (currently not all conditions are supported) |
 
 
 ### Jump to definition

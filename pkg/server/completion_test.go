@@ -2177,6 +2177,41 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "nested function args",
+			filename:        "./testdata/complete/nested_func_arg.jsonnet",
+			replaceString:   "test:: self.func2({}),",
+			replaceByString: "test:: self.func2({}).",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "func1",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "func1(arg1)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "func2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "func2(arg2)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "test",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "test",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "apply",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2187,6 +2222,9 @@ func TestCompletion(t *testing.T) {
 			server.configuration.JPaths = []string{"testdata", "testdata/complete", "testdata/complete/import"}
 			server.configuration.ExtCode = map[string]string{
 				"code": "{ objA: 5, ['%s' % 'computed']: 3}",
+			}
+			server.configuration.Workarounds = WorkaroundConfig{
+				AssumeTrueConditionOnError: true,
 			}
 			var version int32 = 2
 

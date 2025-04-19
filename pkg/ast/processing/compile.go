@@ -36,6 +36,9 @@ func CompileNodeFromStack(node ast.Node, documentstack *nodestack.NodeStack, vm 
 		currentNode := stack.Pop()
 		switch currentNode := currentNode.(type) {
 		case *ast.Var:
+			if currentNode.Id == "std" || currentNode.Id == "$std" {
+				continue
+			}
 			// Recursively resolve the var. If we just add the var as the body, compile can't find the var
 			varNode, err := ResolveVar(currentNode, documentstack)
 			if err != nil {
@@ -51,6 +54,13 @@ func CompileNodeFromStack(node ast.Node, documentstack *nodestack.NodeStack, vm 
 						Body:     varNode,
 					},
 				},
+			}
+		case *ast.DesugaredObject:
+			for _, assert := range currentNode.Asserts {
+				assertTree := nodetree.BuildTree(nil, assert)
+				for _, assertChild := range assertTree.GetAllChildren() {
+					stack.Push(assertChild)
+				}
 			}
 		default:
 		}

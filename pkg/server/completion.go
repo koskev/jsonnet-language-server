@@ -609,6 +609,10 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			// Get all positional arguments first. After that only named arguments remain
 			for i, arg := range applyNode.Arguments.Positional {
 				log.Tracef("Positional argument: %s", currentNode.Parameters[i].Name)
+				if i >= len(currentNode.Parameters) {
+					log.Errorf("arguments are longer than the parameters!")
+					continue
+				}
 				searchstack.Push(&ast.Local{
 					Binds: []ast.LocalBind{{
 						Variable: currentNode.Parameters[i].Name,
@@ -641,9 +645,14 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			resolved, err := s.resolveConditional(currentNode, documentstack)
 			if err != nil {
 				log.Errorf("Failed to resolve conditional: %v", err)
-			} else {
-				searchstack.Push(resolved)
+				if s.configuration.Workarounds.AssumeTrueConditionOnError {
+					log.Warnf("Using default path as a workaround")
+					resolved = currentNode.BranchTrue
+				} else {
+					continue
+				}
 			}
+			searchstack.Push(resolved)
 
 		case *ast.Array:
 			// Pop array

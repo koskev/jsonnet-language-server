@@ -76,6 +76,38 @@ func TestCompile(t *testing.T) {
 		expectedResult: "\"myValue\"\n",
 	})
 
+	node = &ast.Local{
+		Body: &ast.Local{
+			Body: &ast.Var{
+				Id: "outerVar",
+			},
+			Binds: ast.LocalBinds{
+				{
+					Body: &ast.LiteralString{
+						Value: "myValue",
+					},
+					Variable: "myVar",
+				},
+			},
+		},
+		Binds: ast.LocalBinds{
+			{
+				Body: &ast.LiteralString{
+					Value: "myValue",
+				},
+				Variable: "outerVar",
+			},
+		},
+	}
+	tree = nodetree.BuildTree(nil, node)
+	stack = &nodestack.NodeStack{Stack: tree.GetAllChildren()}
+	testCases = append(testCases, testCase{
+		name:           "multi var",
+		documentstack:  stack,
+		compileNode:    node,
+		expectedResult: "\"myValue\"\n",
+	})
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			vm := jsonnet.MakeVM()

@@ -22,6 +22,10 @@ type ConfigurationInlay struct {
 	EnableFunctionArgs bool `json:"enable_function_args"`
 }
 
+type WorkaroundConfig struct {
+	AssumeTrueConditionOnError bool `json:"assume_true_condition_on_error"`
+}
+
 type Configuration struct {
 	ResolvePathsWithTanka bool
 	JPaths                []string
@@ -37,6 +41,8 @@ type Configuration struct {
 
 	EnableSemanticTokens bool
 	UseTypeInDetail      bool
+
+	Workarounds WorkaroundConfig
 }
 
 //nolint:gocyclo
@@ -136,6 +142,21 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 				return fmt.Errorf("unmarshalling inlay config: %w", err)
 			}
 			s.configuration.Inlay = inlayConfig
+		case "workarounds":
+			var workaroundConfig WorkaroundConfig
+			stringMap, ok := sv.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%w: unsupported settings value for workarounds. Expected json object. got: %T", jsonrpc2.ErrInvalidParams, sv)
+			}
+			configBytes, err := json.Marshal(stringMap)
+			if err != nil {
+				return fmt.Errorf("marshalling inlay config: %w", err)
+			}
+			err = json.Unmarshal(configBytes, &workaroundConfig)
+			if err != nil {
+				return fmt.Errorf("unmarshalling inlay config: %w", err)
+			}
+			s.configuration.Workarounds = workaroundConfig
 		case "enable_semantic_tokens":
 			if boolVal, ok := sv.(bool); ok {
 				s.configuration.EnableSemanticTokens = boolVal
