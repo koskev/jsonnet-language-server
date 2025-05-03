@@ -608,11 +608,11 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 
 			// Get all positional arguments first. After that only named arguments remain
 			for i, arg := range applyNode.Arguments.Positional {
-				log.Tracef("Positional argument: %s", currentNode.Parameters[i].Name)
 				if i >= len(currentNode.Parameters) {
 					log.Errorf("arguments are longer than the parameters!")
 					continue
 				}
+				log.Tracef("Positional argument: %s", currentNode.Parameters[i].Name)
 				searchstack.Push(&ast.Local{
 					Binds: []ast.LocalBind{{
 						Variable: currentNode.Parameters[i].Name,
