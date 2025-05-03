@@ -98,9 +98,7 @@ func (s *Server) getInlayHintApplyArgs(tree *nodetree.NodeTree, root ast.Node, u
 		switch currentNode := stackNode.(type) {
 		case *ast.DesugaredObject:
 			for _, assertNode := range currentNode.Asserts {
-				for _, node := range nodetree.BuildTree(nil, assertNode).GetAllChildren() {
-					searchStack.Push(node)
-				}
+				searchStack.PushNodes(nodetree.BuildTree(nil, assertNode).GetAllChildren())
 			}
 		case *ast.Apply:
 			// Get target func
@@ -119,7 +117,8 @@ func (s *Server) getInlayHintApplyArgs(tree *nodetree.NodeTree, root ast.Node, u
 					break
 				}
 				if varNode, ok := applyParam.Expr.(*ast.Var); ok {
-					if string(varNode.Id) == names[i] {
+					// Hide the inlay hint if the name is the same
+					if !s.configuration.Inlay.FunctionArgs.ShowWithSameName && string(varNode.Id) == names[i] {
 						continue
 					}
 				}

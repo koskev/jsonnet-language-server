@@ -14,12 +14,18 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
+type InlayFunctionArgs struct {
+	ShowWithSameName bool `json:"show_with_same_name"`
+}
+
 type ConfigurationInlay struct {
 	// Of course go does neither support options nor default values...
 	// So since go is a stupid language and I don't want to hack proper defaults in they are just all false by default
 	EnableDebugAst     bool `json:"enable_debug_ast"`
 	EnableIndexValue   bool `json:"enable_index_value"`
 	EnableFunctionArgs bool `json:"enable_function_args"`
+
+	FunctionArgs InlayFunctionArgs `json:"function_args"`
 }
 
 type WorkaroundConfig struct {
