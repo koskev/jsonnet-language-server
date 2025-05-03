@@ -92,41 +92,48 @@ func (s *Server) getInlayHintIndex(tree *nodetree.NodeTree, vm *jsonnet.VM) []pr
 
 func (s *Server) getInlayHintApplyArgs(tree *nodetree.NodeTree, root ast.Node, uri protocol.DocumentURI) []protocol.InlayHint {
 	var inlayHints []protocol.InlayHint
-	for _, currentNode := range tree.GetAllChildren() {
-		currentNode, ok := currentNode.(*ast.Apply)
-		if !ok {
-			continue
-		}
-		// Get target func
-		functionNode, err := s.getFunctionCallTarget(root, currentNode.Target, uri)
-		if err != nil {
-			logrus.Warnf("Unable to get function call target for inlay hint: %v. %+v", err, currentNode.Target)
-			continue
-		}
-		var names []string
-		for _, param := range functionNode.Parameters {
-			names = append(names, string(param.Name))
-		}
-		for i, applyParam := range currentNode.Arguments.Positional {
-			if i >= len(names) {
-				// Somehow we have more apply arguments, than function arguments
-				break
-			}
-			if varNode, ok := applyParam.Expr.(*ast.Var); ok {
-				if string(varNode.Id) == names[i] {
-					continue
+	searchStack := nodestack.NodeStack{From: nil, Stack: tree.GetAllChildren()}
+	for !searchStack.IsEmpty() {
+		stackNode := searchStack.Pop()
+		switch currentNode := stackNode.(type) {
+		case *ast.DesugaredObject:
+			for _, assertNode := range currentNode.Asserts {
+				for _, node := range nodetree.BuildTree(nil, assertNode).GetAllChildren() {
+					searchStack.Push(node)
 				}
 			}
-			pos := position.ASTToProtocol(applyParam.Expr.Loc().Begin)
-			inlayHints = append(inlayHints, protocol.InlayHint{
-				Position:     &pos,
-				PaddingRight: true,
-				Label: []protocol.InlayHintLabelPart{
-					{
-						Value: fmt.Sprintf("%s:", names[i]),
+		case *ast.Apply:
+			// Get target func
+			functionNode, err := s.getFunctionCallTarget(root, currentNode.Target, uri)
+			if err != nil {
+				logrus.Warnf("Unable to get function call target for inlay hint: %v. %+v", err, currentNode.Target)
+				continue
+			}
+			var names []string
+			for _, param := range functionNode.Parameters {
+				names = append(names, string(param.Name))
+			}
+			for i, applyParam := range currentNode.Arguments.Positional {
+				if i >= len(names) {
+					// Somehow we have more apply arguments, than function arguments
+					break
+				}
+				if varNode, ok := applyParam.Expr.(*ast.Var); ok {
+					if string(varNode.Id) == names[i] {
+						continue
+					}
+				}
+				pos := position.ASTToProtocol(applyParam.Expr.Loc().Begin)
+				inlayHints = append(inlayHints, protocol.InlayHint{
+					Position:     &pos,
+					PaddingRight: true,
+					Label: []protocol.InlayHintLabelPart{
+						{
+							Value: fmt.Sprintf("%s:", names[i]),
+						},
 					},
-				},
-			})
+				})
+			}
 		}
 	}
 	return inlayHints

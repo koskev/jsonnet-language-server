@@ -33,6 +33,10 @@ func (s *NodeStack) Push(n ast.Node) {
 	s.Stack = append(s.Stack, n)
 }
 
+func (s *NodeStack) PushNodes(nodes []ast.Node) {
+	s.Stack = append(s.Stack, nodes...)
+}
+
 func (s *NodeStack) PushFront(n ast.Node) {
 	s.Stack = append([]ast.Node{n}, s.Stack...)
 }
