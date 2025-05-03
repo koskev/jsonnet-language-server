@@ -1,23 +1,66 @@
+version: 2
+env:
+  - CGO_ENABLED=1
 builds:
-  - env:
-      - CGO_ENABLED=0
+  - id: linux_amd64
     goos:
-      - darwin
       - linux
+    goarch:
+      - amd64
+  - id: linux_arm
+    goos:
+      - linux
+    goarch:
+      - arm
+    env:
+      - CC=arm-linux-gnueabihf-gcc
+      - CXX=arm-linux-gnueabihf-g++
+    goarm:
+      - "6"
+      - "7"
+  - id: linux_arm64
+    goos:
+      - linux
+    goarch:
+      - arm64
+    env:
+      - CC=aarch64-linux-gnu-gcc
+      - CXX=aarch64-linux-gnu-g++
+  - id: windows_amd64
+    goos:
       - windows
     goarch:
       - amd64
-      - arm
+    env:
+      - CC=x86_64-w64-mingw32-gcc
+      - CXX=x86_64-w64-mingw32-g++
+  - id: windows_arm64
+    goos:
+      - windows
+    goarch:
       - arm64
-    # GOARM to build for when GOARCH is arm.
-    # For more info refer to: https://golang.org/doc/install/source#environment
-    # Default is only 6.
-    goarm:
-      - '6'
-      - '7'
+    env:
+      - CC=/llvm-mingw/bin/aarch64-w64-mingw32-gcc
+      - CXX=/llvm-mingw/bin/aarch64-w64-mingw32-g++
+  - id: darwin_amd64
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    env:
+      - CC=o64-clang
+      - CXX=o64-clang++
+  - id: darwin_arm64
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    env:
+      - CC=oa64-clang
+      - CXX=oa64-clang++
 archives:
-  - format: binary
+  - formats: ["binary"]
 release:
-  draft: true
+  draft: false
 changelog:
   disable: true
