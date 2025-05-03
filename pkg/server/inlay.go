@@ -91,7 +91,11 @@ func (s *Server) getInlayHintIndex(tree *nodetree.NodeTree, vm *jsonnet.VM) []pr
 
 func (s *Server) getInlayHintApplyArgs(tree *nodetree.NodeTree, root ast.Node, uri protocol.DocumentURI) []protocol.InlayHint {
 	var inlayHints []protocol.InlayHint
-	for _, currentNode := range nodetree.GetTopNodesOfType[*ast.Apply](tree) {
+	for _, currentNode := range tree.GetAllChildren() {
+		currentNode, ok := currentNode.(*ast.Apply)
+		if !ok {
+			continue
+		}
 		// Get target func
 		functionNode, err := s.getFunctionCallTarget(root, currentNode.Target, uri)
 		if err != nil {
@@ -106,13 +110,18 @@ func (s *Server) getInlayHintApplyArgs(tree *nodetree.NodeTree, root ast.Node, u
 				// Somehow we have more apply arguments, than function arguments
 				break
 			}
+			if varNode, ok := applyParam.Expr.(*ast.Var); ok {
+				if string(varNode.Id) == names[i] {
+					continue
+				}
+			}
 			pos := position.ASTToProtocol(applyParam.Expr.Loc().Begin)
 			inlayHints = append(inlayHints, protocol.InlayHint{
 				Position:     &pos,
 				PaddingRight: true,
 				Label: []protocol.InlayHintLabelPart{
 					{
-						Value: names[i],
+						Value: fmt.Sprintf("%s:", names[i]),
 					},
 				},
 			})
