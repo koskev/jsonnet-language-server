@@ -13,6 +13,7 @@ import (
 	"github.com/grafana/jsonnet-language-server/pkg/nodetree"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
+	"github.com/sirupsen/logrus"
 )
 
 func (s *Server) InlayHint(_ context.Context, params *protocol.InlayHintParams) ([]protocol.InlayHint, error) {
@@ -99,6 +100,7 @@ func (s *Server) getInlayHintApplyArgs(tree *nodetree.NodeTree, root ast.Node, u
 		// Get target func
 		functionNode, err := s.getFunctionCallTarget(root, currentNode.Target, uri)
 		if err != nil {
+			logrus.Warnf("Unable to get function call target for inlay hint: %v. %+v", err, currentNode.Target)
 			continue
 		}
 		var names []string

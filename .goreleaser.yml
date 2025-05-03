@@ -63,4 +63,4 @@ archives:
 release:
   draft: false
 changelog:
-  disable: true
+  disable: false

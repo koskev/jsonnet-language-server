@@ -878,8 +878,12 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 	}
 	var functionNode *ast.Function
 
-	// only resolve if we have an index. Otherwise we just have the function call
-	if indexNode, ok := foundNode.Peek().(*ast.Index); ok {
+	stdFunctionNode, err := s.getStdFunction(foundNode.Peek())
+
+	if err == nil {
+		functionNode = stdFunctionNode
+	} else if indexNode, ok := foundNode.Peek().(*ast.Index); ok {
+		// only resolve if we have an index. Otherwise we just have the function call
 		indexName, ok := indexNode.Index.(*ast.LiteralString)
 		if !ok {
 			return items

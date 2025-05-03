@@ -32,7 +32,7 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
     * Complete conditionals
       * Currently not all conditions are supported
     * Complete array access
-    * Complete unused argument names: myFunc(1, arg3=3, ar**g3=**),
+    * Complete unused argument names: myFunc(1, arg3=3, ar**g2=**),
   * Basic automatic ast fix
   * Basic semantic token support
     * Only the basic stuff. It is assumed you are also using something like tree sitter
