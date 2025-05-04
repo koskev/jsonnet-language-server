@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/google/go-jsonnet"
@@ -48,8 +49,32 @@ func (s *Server) InlayHint(_ context.Context, params *protocol.InlayHintParams) 
 
 func (s *Server) getInlayHintIndex(tree *nodetree.NodeTree, vm *jsonnet.VM) []protocol.InlayHint {
 	var inlayHints []protocol.InlayHint
-	for _, currentNode := range nodetree.GetTopNodesOfType[*ast.Index](tree) {
-		// nolint: gocritic
+	allIndices := []*ast.Index{}
+	for _, node := range tree.GetAllChildren() {
+		if indexNode, ok := node.(*ast.Index); ok {
+			allIndices = append(allIndices, indexNode)
+		}
+	}
+
+	// Filter non top indices.
+	// Since go is lacking some basic features, I don't have the motivation to do this in a smart way
+	// In proper languages this would be a simple .filter
+	toRemoveIndices := []*ast.Index{}
+	for _, idx := range allIndices {
+		if targetNode, ok := idx.Target.(*ast.Index); ok {
+			toRemoveIndices = append(toRemoveIndices, targetNode)
+		}
+	}
+
+	topIndices := []*ast.Index{}
+	for _, node := range allIndices {
+		if !slices.Contains(toRemoveIndices, node) {
+			topIndices = append(topIndices, node)
+		}
+	}
+
+	// TODO: Remove this weird code and just use the completion code to get the actual value
+	for _, currentNode := range topIndices {
 		stack := nodestack.NewNodeStack(currentNode)
 		processor := processing.NewProcessor(s.cache, vm)
 		deepestNode := stack.Peek()
@@ -79,8 +104,6 @@ func (s *Server) getInlayHintIndex(tree *nodetree.NodeTree, vm *jsonnet.VM) []pr
 		}
 
 		pos := position.ASTToProtocol(currentNode.Loc().End)
-		// Push to end of line
-		pos.Character += 1000
 		inlayHints = append(inlayHints, protocol.InlayHint{
 			Position:    &pos,
 			PaddingLeft: true,
