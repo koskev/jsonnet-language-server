@@ -302,9 +302,8 @@ func (s *Server) loadExtCodeFiles(config ExtCodeConfig) (map[string]string, erro
 		}
 		currentPath += "/.."
 	}
-	parsed := s.evaluateExtCode(fileMap)
 
-	return parsed, nil
+	return fileMap, nil
 }
 
 func (s *Server) findNextExtCodeFile(currentPath string) ([]string, error) {
@@ -341,33 +340,16 @@ func (s *Server) parseExtCode(unparsed any) (map[string]string, error) {
 		return nil, fmt.Errorf("unsupported settings value for ext_code. expected json object. got: %T", unparsed)
 	}
 
-	vm := s.getVM(".")
-
 	extCode := make(map[string]string, len(newVars))
 	for varKey, varValue := range newVars {
 		vv, ok := varValue.(string)
 		if !ok {
 			return nil, fmt.Errorf("unsupported settings value for ext_code.%s. expected string. got: %T", varKey, varValue)
 		}
-		jsonResult, _ := vm.EvaluateAnonymousSnippet("ext-code", vv)
-		extCode[varKey] = jsonResult
+		extCode[varKey] = vv
 	}
 
 	return extCode, nil
-}
-
-func (s *Server) evaluateExtCode(extCode map[string]string) map[string]string {
-	vm := s.getVM(".")
-
-	for varKey, varValue := range extCode {
-		jsonResult, err := vm.EvaluateAnonymousSnippet("ext-code", varValue)
-		if err != nil {
-			log.Errorf("Could not compile ext code: %v", err)
-		} else {
-			extCode[varKey] = jsonResult
-		}
-	}
-	return extCode
 }
 
 func resetExtVars(vm *jsonnet.VM, vars map[string]string, code map[string]string) {

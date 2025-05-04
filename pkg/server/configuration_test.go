@@ -308,7 +308,7 @@ func TestConfiguration_Formatting(t *testing.T) {
 					"hello": "world",
 				},
 				ExtCode: map[string]string{
-					"hello": "{\n   \"world\": true\n}\n",
+					"hello": "{\"world\": true,}",
 				},
 				ResolvePathsWithTanka: false,
 				JPaths:                []string{"blabla", "blabla2"},
