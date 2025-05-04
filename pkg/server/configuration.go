@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"slices"
 	"strings"
 
@@ -295,7 +296,8 @@ func (s *Server) loadExtCodeFiles(config ExtCodeConfig) (map[string]string, erro
 			}
 		}
 
-		if !config.FindUpwards || currentPath == "/" {
+		// I can't test on Windows and honestly don't even want to mess with it. Therefore I'll just skip it
+		if !config.FindUpwards || currentPath == "/" || runtime.GOOS == "windows" {
 			break
 		}
 		currentPath += "/.."

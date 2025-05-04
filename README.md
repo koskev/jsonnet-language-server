@@ -67,7 +67,7 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 #### ext_code_config
 | Key    | type | description |
 | -------- | ------- | ------- |
-| find_upwards | bool    | Find all <name>.extcode.jsonnet files upwards until the root directory using as extcode with name=content as extCode |
+| find_upwards | bool    | Find all <name>.extcode.jsonnet files upwards until the root directory using as extcode with name=content as extCode (unsupported on Windows) |
 
 ### Jump to definition
 
