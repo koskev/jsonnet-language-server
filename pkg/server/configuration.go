@@ -4,7 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
+	"os"
+	"path/filepath"
 	"reflect"
+	"slices"
+	"strings"
 
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/formatter"
@@ -13,6 +18,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	log "github.com/sirupsen/logrus"
 )
+
+var extCodeSuffix = ".extcode.jsonnet"
 
 type InlayFunctionArgs struct {
 	ShowWithSameName bool `json:"show_with_same_name"`
@@ -32,6 +39,10 @@ type WorkaroundConfig struct {
 	AssumeTrueConditionOnError bool `json:"assume_true_condition_on_error"`
 }
 
+type ExtCodeConfig struct {
+	FindUpwards bool `json:"find_upwards"`
+}
+
 type Configuration struct {
 	ResolvePathsWithTanka bool
 	JPaths                []string
@@ -49,6 +60,8 @@ type Configuration struct {
 	UseTypeInDetail      bool
 
 	Workarounds WorkaroundConfig
+
+	ExtCodeConfig ExtCodeConfig
 }
 
 //nolint:gocyclo
@@ -126,7 +139,10 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 			if err != nil {
 				return fmt.Errorf("%w: ext_code parsing failed: %v", jsonrpc2.ErrInvalidParams, err)
 			}
-			s.configuration.ExtCode = newCode
+			if s.configuration.ExtCode == nil {
+				s.configuration.ExtCode = map[string]string{}
+			}
+			maps.Copy(s.configuration.ExtCode, newCode)
 		case "max_inlay_length":
 			if length, ok := sv.(int); ok {
 				s.configuration.MaxInlayLength = length
@@ -163,6 +179,29 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 				return fmt.Errorf("unmarshalling inlay config: %w", err)
 			}
 			s.configuration.Workarounds = workaroundConfig
+		case "ext_code_config":
+			var extCodeConfig ExtCodeConfig
+			stringMap, ok := sv.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%w: unsupported settings value for ext_code_config. Expected json object. got: %T", jsonrpc2.ErrInvalidParams, sv)
+			}
+			configBytes, err := json.Marshal(stringMap)
+			if err != nil {
+				return fmt.Errorf("marshalling extcode config: %w", err)
+			}
+			err = json.Unmarshal(configBytes, &extCodeConfig)
+			if err != nil {
+				return fmt.Errorf("unmarshalling extcode config: %w", err)
+			}
+			s.configuration.ExtCodeConfig = extCodeConfig
+
+			extCode, err := s.loadExtCodeFiles(extCodeConfig)
+			if err != nil {
+				return fmt.Errorf("%w: ext_code_config parsing failed: %v", jsonrpc2.ErrInvalidParams, err)
+			}
+			maps.Copy(extCode, s.configuration.ExtCode)
+			s.configuration.ExtCode = extCode
+
 		case "enable_semantic_tokens":
 			if boolVal, ok := sv.(bool); ok {
 				s.configuration.EnableSemanticTokens = boolVal
@@ -228,8 +267,74 @@ func (s *Server) parseFormattingOpts(unparsed interface{}) (formatter.Options, e
 	return opts, nil
 }
 
-func (s *Server) parseExtCode(unparsed interface{}) (map[string]string, error) {
-	newVars, ok := unparsed.(map[string]interface{})
+func (s *Server) loadExtCodeFiles(config ExtCodeConfig) (map[string]string, error) {
+	currentPath := "./"
+
+	fileMap := map[string]string{}
+
+	var err error
+	for {
+		currentPath, err = filepath.Abs(currentPath)
+		if err != nil {
+			return nil, fmt.Errorf("getting abs path for %s: %w", currentPath, err)
+		}
+		files, err := s.findNextExtCodeFile(currentPath)
+		if err == nil {
+			for _, found := range files {
+				paramName := strings.TrimSuffix(found, extCodeSuffix)
+				// WTF GO!? No simple "has" function?
+				if _, exists := fileMap[paramName]; exists {
+					// Skip existing config as the lower ones should have precedence
+					continue
+				}
+				content, err := os.ReadFile(found)
+				if err != nil {
+					return nil, fmt.Errorf("reading extcode file %s: %w", found, err)
+				}
+				fileMap[paramName] = string(content)
+			}
+		}
+
+		if !config.FindUpwards || currentPath == "/" {
+			break
+		}
+		currentPath += "/.."
+	}
+	parsed := s.evaluateExtCode(fileMap)
+
+	return parsed, nil
+}
+
+func (s *Server) findNextExtCodeFile(currentPath string) ([]string, error) {
+	foundFiles := []string{}
+	cwd, err := filepath.Abs(currentPath)
+	if err != nil {
+		return nil, fmt.Errorf("getting cwd for ext code file: %w", err)
+	}
+	files, err := os.ReadDir(cwd)
+	if err != nil {
+		return nil, fmt.Errorf("reading dir %s: %w", cwd, err)
+	}
+	// Am I just spoiled or is go just this stupid? Again this would be a simple "filter" in almost any other language
+	for {
+		idx := slices.IndexFunc(files, func(entry os.DirEntry) bool {
+			return !entry.IsDir() && strings.HasSuffix(entry.Name(), extCodeSuffix)
+		})
+
+		if idx < 0 {
+			break
+		}
+
+		foundFiles = append(foundFiles, files[idx].Name())
+
+		files = files[idx+1:]
+	}
+
+	return foundFiles, nil
+}
+
+func (s *Server) parseExtCode(unparsed any) (map[string]string, error) {
+	newVars, ok := unparsed.(map[string]any)
 	if !ok {
 		return nil, fmt.Errorf("unsupported settings value for ext_code. expected json object. got: %T", unparsed)
 	}
@@ -247,6 +352,20 @@ func (s *Server) parseExtCode(unparsed interface{}) (map[string]string, error) {
 	}
 
 	return extCode, nil
+}
+
+func (s *Server) evaluateExtCode(extCode map[string]string) map[string]string {
+	vm := s.getVM(".")
+
+	for varKey, varValue := range extCode {
+		jsonResult, err := vm.EvaluateAnonymousSnippet("ext-code", varValue)
+		if err != nil {
+			log.Errorf("Could not compile ext code: %v", err)
+		} else {
+			extCode[varKey] = jsonResult
+		}
+	}
+	return extCode
 }
 
 func resetExtVars(vm *jsonnet.VM, vars map[string]string, code map[string]string) {

@@ -64,6 +64,10 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 | -------- | ------- | ------- |
 | assume_true_condition_on_error | bool    | Assumes all conditions to be true if they run into an error (currently not all conditions are supported) |
 
+#### ext_code_config
+| Key    | type | description |
+| -------- | ------- | ------- |
+| find_upwards | bool    | Find all <name>.extcode.jsonnet files upwards until the root directory using as extcode with name=content as extCode |
 
 ### Jump to definition
 
