@@ -1973,6 +1973,27 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
+			name:               "named function args open func",
+			filename:           "./testdata/complete/functionargs.jsonnet",
+			replaceString:      "a: localfunc(arg=data),",
+			replaceByString:    "a: localfunc(",
+			onlyCheckIfPresent: true,
+			disable:            true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "arg1=",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "arg1=",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+				},
+			},
+		},
+		{
 			name:               "named function args first",
 			filename:           "./testdata/complete/functionargs.jsonnet",
 			replaceString:      "b: multiArguments(1, 2, 3),",

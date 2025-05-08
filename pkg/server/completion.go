@@ -947,6 +947,7 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 
 	for i, param := range functionNode.Parameters {
 		// Skip i unnamed parameters as they are already set
+		// FIXME: if we complete "myFunc(a" a is considered a set argument and won't complete properly
 		if i >= len(applyNode.Arguments.Positional) && !slices.Contains(setNamedArgs, string(param.Name)) {
 			items = append(items, s.createCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
 		}
