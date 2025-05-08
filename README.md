@@ -69,7 +69,20 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 | -------- | ------- | ------- |
 | find_upwards | bool    | Find all <name>.extcode.jsonnet files upwards until the root directory using as extcode with name=content as extCode (unsupported on Windows) |
 
+### New features
+
+https://github.com/user-attachments/assets/0530595f-ef16-4716-a6cb-9f5c67b37b65
+
+https://github.com/user-attachments/assets/66c30d80-8c2e-42e9-8878-2aeda30ae3ba
+
+https://github.com/user-attachments/assets/712d4850-4a34-486c-9443-b5ca63af2653
+
+
+
 ### Jump to definition
+
+
+
 
 https://user-images.githubusercontent.com/29210090/145594957-efc01d97-d4c1-4fad-85cb-f5cb4a5f0e97.mp4
 
