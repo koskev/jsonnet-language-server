@@ -2233,6 +2233,42 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:            "functionarg in empty body",
+			filename:        "./testdata/complete/function/argument.jsonnet",
+			replaceString:   "functionarg  // body",
+			replaceByString: " ",
+			disable:         true,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "local",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "local",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "local",
+						},
+					},
+					{
+						Label:      "functionarg",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "functionarg",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+					{
+						Label:      "var",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "var",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object",
+						},
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
