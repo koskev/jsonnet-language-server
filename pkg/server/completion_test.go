@@ -2269,6 +2269,23 @@ func TestCompletion(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:             "extvar completion",
+			filename:         "./testdata/complete/extcode.jsonnet",
+			replaceString:    "'code'",
+			replaceByString:  "''",
+			completionOffset: -1,
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "code",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "code",
+					},
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {

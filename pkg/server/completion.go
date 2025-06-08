@@ -90,6 +90,27 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 			})
 		}
 		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
+	case cst.CompleteExtVar:
+		log.Errorf("ext var %+v", s.configuration.ExtVars)
+		log.Errorf("ext code %+v", s.configuration.ExtCode)
+		var items []protocol.CompletionItem
+		for key, value := range s.configuration.ExtVars {
+			items = append(items, protocol.CompletionItem{
+				Label:      key,
+				Kind:       protocol.ValueCompletion,
+				Detail:     value,
+				InsertText: key,
+			})
+		}
+		for key, value := range s.configuration.ExtCode {
+			items = append(items, protocol.CompletionItem{
+				Label:      key,
+				Kind:       protocol.ValueCompletion,
+				Detail:     value,
+				InsertText: key,
+			})
+		}
+		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 	}
 
 	found := info.Node

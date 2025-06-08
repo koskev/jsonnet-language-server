@@ -73,7 +73,7 @@ func GetNodeAtPos(root *sitter.Node, point sitter.Point) *sitter.Node {
 
 func IsSymbolNode(node *sitter.Node) bool {
 	switch node.GrammarName() {
-	case NodeSemicolon, NodeDot, NodeClosingBracket, NodeColon:
+	case NodeSemicolon, NodeDot, NodeClosingBracket, NodeOpeningBracket, NodeColon:
 		return true
 	}
 	return false
@@ -100,8 +100,19 @@ func IsNode(node *sitter.Node, nodeType NodeType) bool {
 	return node != nil && node.GrammarName() == string(nodeType)
 }
 
+func GetPrevNodeNoSymbol(node *sitter.Node) *sitter.Node {
+	prev := GetPrevNode(node)
+	for IsSymbolNode(prev) {
+		prev = GetPrevNode(prev)
+	}
+	return prev
+}
+
 // Gets the previous node in the tree
 func GetPrevNode(node *sitter.Node) *sitter.Node {
+	if node == nil {
+		return nil
+	}
 	if sibling := node.PrevSibling(); sibling != nil {
 		return GetLastChild(sibling)
 	}
@@ -176,6 +187,13 @@ func GetLastChildType(node *sitter.Node, nodeType NodeType, recursive bool) (*si
 		return foundChild, nil
 	}
 	return nil, fmt.Errorf("unable to find child for type %s", nodeType)
+}
+
+func GetNodeName(node *sitter.Node, content string) string {
+	if node == nil || !node.IsNamed() {
+		return ""
+	}
+	return content[node.Range().StartByte:node.Range().EndByte]
 }
 
 func RunForEveryNode(node *sitter.Node, execFunc func(sitter.Node)) {

@@ -18,6 +18,7 @@ const (
 	CompleteGlobal = iota
 	CompleteLocal
 	CompleteImport
+	CompleteExtVar
 )
 
 type CompletionNodeInfo struct {
@@ -159,6 +160,20 @@ func FindCompletionNode(ctx context.Context, content string, pos protocol.Positi
 			endIndex := positionToIndex(content, position.CSTToProtocol(found.EndPosition()))
 			info.Index = content[startIndex:endIndex]
 			return &info, nil
+		} else if IsNode(importNode, NodeArgs) && IsNode(importNode.Parent(), NodeFunctionCall) {
+			// We are inside function parameters
+			stdlibNameNode := GetPrevNodeNoSymbol(importNode)
+			stdKeywordNode := GetPrevNodeNoSymbol(stdlibNameNode)
+
+			if IsNode(stdlibNameNode, NodeID) && IsNode(stdKeywordNode, NodeID) {
+				stdLibName := GetNodeName(stdlibNameNode, content)
+				stdKeyword := GetNodeName(stdKeywordNode, content)
+
+				if stdKeyword == "std" && stdLibName == "extVar" {
+					info.CompletionType = CompleteExtVar
+					return &info, nil
+				}
+			}
 		}
 
 	case NodeDot:

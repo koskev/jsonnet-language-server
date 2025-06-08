@@ -10,7 +10,6 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
  * Autocomplete function parameter with their default values
  * Find references
  * Rename
- * Proper extcode support with autocomplete
  * Very basic signature help
  * Inlay hints
    * unnamed function parameters
@@ -20,6 +19,8 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
     * Completion with named args and objects without a space
     * Binary Object completion
   * Complete rework of the autocomplete code
+    * Proper extcode support
+    * Complete extVar/Code variables and all valid values e.g. std.extVar("**PARAMS**")
     * Complete for objects
     * Supports completion after newlines and whitespaces e.g. myobj.\n  myVal
     * Completes returns of functions
