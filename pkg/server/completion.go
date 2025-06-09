@@ -566,7 +566,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			if currentNode.Body != nil {
 				log.Tracef("Local %v", reflect.TypeOf(currentNode.Body))
 				documentstack.Push(currentNode.Body)
-				obj := s.buildDesugaredObject(documentstack)
+				obj := s.buildNode(documentstack)
 				if obj != nil {
 					searchstack.Push(obj)
 				}
@@ -575,7 +575,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 		case *ast.Index:
 
 			log.Tracef("Index with name %v", currentNode.Index)
-			obj := s.buildDesugaredObject(documentstack)
+			obj := s.buildNode(documentstack)
 			if obj != nil {
 				searchstack.Push(obj)
 			}
@@ -740,14 +740,15 @@ func (s *Server) resolveConditional(node *ast.Conditional, documentstack *nodest
 // start at a
 // get desurgared object for each step
 // does only act on complete indices. The current typing index is handled one layer above
-func (s *Server) buildDesugaredObject(documentstack *nodestack.NodeStack) *ast.DesugaredObject {
+func (s *Server) buildNode(documentstack *nodestack.NodeStack) ast.Node {
 	callstack := s.buildCallStack(documentstack)
 
 	log.Debugf("Callstack %+v", callstack)
 	// First object is var or func -> resolve to desugared object (including their keys)
 	baseObject := s.getDesugaredObject(callstack, documentstack)
 	if baseObject == nil {
-		return nil
+		// No base object -> Just return the first object to complete
+		return documentstack.Peek()
 	}
 
 	// All others are indices, apply, or array -> find ind DesugaredObject and resolve next layer
@@ -806,7 +807,9 @@ stackLoop:
 						baseObject = newDesugar
 						continue stackLoop
 					}
-					log.Errorf("Body is not a desugared object: %v", reflect.TypeOf(field.Body))
+
+					// If it is not an object, we just return the node. It might be an array where we want to add snippets
+					return field.Body
 				}
 			}
 			// No match
@@ -841,27 +844,35 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 	//	log.Errorf("%s", t)
 	// }
 
-	log.Debugf("Searching completion for %v at %v", reflect.TypeOf(searchstack.Peek()), pos)
-	object := s.buildDesugaredObject(searchstack)
-	if object == nil {
+	log.Errorf("Searching completion for %v at %v", reflect.TypeOf(searchstack.Peek()), pos)
+
+	node := s.buildNode(searchstack.Clone())
+	if node == nil {
 		return items
 	}
 
-	// Sort by name
-	sort.SliceStable(object.Fields, func(i, j int) bool {
-		iName, iok := object.Fields[i].Name.(*ast.LiteralString)
-		jName, jok := object.Fields[j].Name.(*ast.LiteralString)
+	switch object := node.(type) {
+	case *ast.DesugaredObject:
 
-		return iok && jok && iName.Value < jName.Value
-	})
-	for _, field := range object.Fields {
-		if nameNode, ok := field.Name.(*ast.LiteralString); ok {
-			if strings.HasPrefix(nameNode.Value, indexName) {
-				items = append(items,
-					s.createCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
-				)
+		// Sort by name
+		sort.SliceStable(object.Fields, func(i, j int) bool {
+			iName, iok := object.Fields[i].Name.(*ast.LiteralString)
+			jName, jok := object.Fields[j].Name.(*ast.LiteralString)
+
+			return iok && jok && iName.Value < jName.Value
+		})
+		for _, field := range object.Fields {
+			if nameNode, ok := field.Name.(*ast.LiteralString); ok {
+				if strings.HasPrefix(nameNode.Value, indexName) {
+					items = append(items,
+						s.createCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
+					)
+				}
 			}
 		}
+	case *ast.Array:
+		items = append(items, s.createArraySnippets(searchstack, pos)...)
+	default:
 	}
 
 	return items
@@ -911,8 +922,12 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 		}
 		foundNode.Pop()
 		foundNode.Push(indexNode.Target)
-		obj := s.buildDesugaredObject(foundNode)
-		if obj == nil {
+		node := s.buildNode(foundNode)
+		if node == nil {
+			return items
+		}
+		obj, ok := node.(*ast.DesugaredObject)
+		if !ok {
 			return items
 		}
 		for _, field := range obj.Fields {
@@ -1082,6 +1097,68 @@ func formatLabel(str string) string {
 	ret, _ = strings.CutPrefix(ret, ".")
 	ret = strings.TrimRight(ret, "\n")
 	return ret
+}
+
+func locationToIndex(pos ast.Location, text string) int {
+	idx := 0
+	lines := strings.Split(text, "\n")
+	for i, line := range lines {
+		if i+1 >= pos.Line {
+			idx += pos.Column - 1
+			break
+		}
+		idx += len(line) + 1 // Append the \n again
+	}
+	return idx
+}
+
+func (s *Server) createCompletionItemSurround(
+	label string,
+	prefix string,
+	postfix string,
+	kind protocol.CompletionItemKind,
+	stack *nodestack.NodeStack,
+	cursorPos protocol.Position,
+) protocol.CompletionItem {
+	firstNode := stack.Peek()
+	lastNode := stack.PeekFront()
+
+	doc, err := s.cache.Get(protocol.URIFromPath(firstNode.Loc().FileName))
+	if err != nil {
+		log.Errorf("Could not get the document %s: %v", firstNode.Loc().FileName, err)
+		return protocol.CompletionItem{}
+	}
+
+	beginTextPos := locationToIndex(firstNode.Loc().Begin, doc.Item.Text)
+	endTextPos := locationToIndex(lastNode.Loc().End, doc.Item.Text)
+	callText := doc.Item.Text[beginTextPos:endTextPos]
+
+	text := fmt.Sprintf("%s%s%s", prefix, callText, postfix)
+
+	pos := position.ASTToProtocol(lastNode.Loc().End)
+	// Add a character due to the .
+	pos.Character++
+	return protocol.CompletionItem{
+		Label: label,
+		TextEdit: &protocol.TextEdit{
+			NewText: text,
+			Range: protocol.Range{
+				Start: cursorPos,
+				End:   cursorPos,
+			},
+		},
+		// Remove the old text
+		AdditionalTextEdits: []protocol.TextEdit{
+			{
+				NewText: "",
+				Range: protocol.Range{
+					Start: position.ASTToProtocol(firstNode.Loc().Begin),
+					End:   pos,
+				},
+			},
+		},
+		Kind: kind,
+	}
 }
 
 //nolint:unparam // Currently prefix is always called with ""

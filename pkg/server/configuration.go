@@ -44,6 +44,10 @@ type ExtCodeConfig struct {
 	FindUpwards bool `json:"find_upwards"`
 }
 
+type CompletionConfig struct {
+	EnableArraySnippets bool `json:"enable_array_snippets"`
+}
+
 type Configuration struct {
 	ResolvePathsWithTanka bool
 	JPaths                []string
@@ -63,8 +67,11 @@ type Configuration struct {
 	Workarounds WorkaroundConfig
 
 	ExtCodeConfig ExtCodeConfig
+	Completion    CompletionConfig
 }
 
+// TODO: currently partial config changes are not supported for all settings (due to just unmarshalling the configs). However, the old code is stupid as well (but correct :) )
+//
 //nolint:gocyclo
 func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidChangeConfigurationParams) error {
 	settingsMap, ok := params.Settings.(map[string]any)
@@ -216,6 +223,21 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 			} else {
 				return fmt.Errorf("%w: unsupported settings value for use_type_in_detail. expected boolean. got: %T", jsonrpc2.ErrInvalidParams, sv)
 			}
+		case "completion":
+			var completionConfig CompletionConfig
+			stringMap, ok := sv.(map[string]any)
+			if !ok {
+				return fmt.Errorf("%w: unsupported settings value for completion. Expected json object. got: %T", jsonrpc2.ErrInvalidParams, sv)
+			}
+			configBytes, err := json.Marshal(stringMap)
+			if err != nil {
+				return fmt.Errorf("marshalling completion config: %w", err)
+			}
+			err = json.Unmarshal(configBytes, &completionConfig)
+			if err != nil {
+				return fmt.Errorf("unmarshalling completion config: %w", err)
+			}
+			s.configuration.Completion = completionConfig
 
 		default:
 			return fmt.Errorf("%w: unsupported settings key: %q", jsonrpc2.ErrInvalidParams, sk)

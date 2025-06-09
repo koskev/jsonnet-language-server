@@ -70,6 +70,11 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 | -------- | ------- | ------- |
 | find_upwards | bool    | Find all <name>.extcode.jsonnet files upwards until the root directory using as extcode with name=content as extCode (unsupported on Windows) |
 
+#### completion
+| Key    | type | description |
+| -------- | ------- | ------- |
+| enable_array_snippets | bool    | Enable support for array snippets. These are still broken in a bunch of cases. E.g. this allows to complete `array.length` which resolves to `std.length(array)` |
+
 ### New features
 
 https://github.com/user-attachments/assets/0530595f-ef16-4716-a6cb-9f5c67b37b65
