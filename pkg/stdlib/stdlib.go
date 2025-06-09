@@ -3,11 +3,13 @@ package stdlib
 import (
 	_ "embed"
 	"encoding/json"
+	"reflect"
 	"regexp"
 	"strings"
 
 	md "github.com/JohannesKaufmann/html-to-markdown"
 	"github.com/google/go-jsonnet"
+	"github.com/google/go-jsonnet/ast"
 )
 
 var (
@@ -25,9 +27,13 @@ type Function struct {
 	AvailableSince string   `json:"availableSince"`
 	Params         []string `json:"params"`
 
-	Description         interface{} `json:"description"`
-	RenderedDescription string      `json:"renderedDescription"`
+	Description         any    `json:"description"`
+	RenderedDescription string `json:"renderedDescription"`
 	MarkdownDescription string
+
+	// This function only applies to the given types
+	// TODO: make it per parameter
+	TypeLimitations []reflect.Type
 }
 
 func (f *Function) Signature() string {
@@ -39,16 +45,20 @@ func (f *Function) Signature() string {
 }
 
 type group struct {
-	ID            string      `json:"id"`
-	Intro         interface{} `json:"intro"`
-	RenderedIntro string      `json:"renderedIntro"`
-	Name          string      `json:"name"`
-	Fields        []Function  `json:"fields"`
+	ID            string     `json:"id"`
+	Intro         any        `json:"intro"`
+	RenderedIntro string     `json:"renderedIntro"`
+	Name          string     `json:"name"`
+	Fields        []Function `json:"fields"`
 }
 
 type stdlib struct {
 	Prefix string  `json:"prefix"`
 	Groups []group `json:"groups"`
+}
+
+var stdLibLimitations = map[string][]reflect.Type{
+	"length": {reflect.TypeFor[*ast.Array](), reflect.TypeFor[*ast.LiteralString](), reflect.TypeFor[*ast.DesugaredObject](), reflect.TypeFor[*ast.Function]()},
 }
 
 func Functions() ([]Function, error) {
@@ -88,8 +98,9 @@ func Functions() ([]Function, error) {
 					params[i] = strings.TrimSpace(param)
 				}
 				allFunctions = append(allFunctions, Function{
-					Name:   mathFunc[1],
-					Params: params,
+					Name:            mathFunc[1],
+					Params:          params,
+					TypeLimitations: []reflect.Type{reflect.TypeFor[*ast.LiteralNumber]()},
 				})
 			}
 		}
@@ -113,6 +124,12 @@ func Functions() ([]Function, error) {
 					})
 				}
 			}
+			if group.ID == "string" || group.ID == "parsing" {
+				field.TypeLimitations = append(field.TypeLimitations, reflect.TypeFor[*ast.LiteralString]())
+			}
+			if group.ID == "objects" {
+				field.TypeLimitations = append(field.TypeLimitations, reflect.TypeFor[*ast.DesugaredObject]())
+			}
 
 			allFunctions = append(allFunctions, field)
 		}
@@ -135,6 +152,14 @@ func Functions() ([]Function, error) {
 			MarkdownDescription: "**Undocumented**\n\nSee https://github.com/google/go-jsonnet/blob/12bd29d164b131a4cd84f22f1456fe37136abc6d/linter/internal/types/stdlib.go#L162-L170",
 		},
 		)
+	}
+
+	for i, stdFunc := range allFunctions {
+		restrictedTypes, ok := stdLibLimitations[stdFunc.Name]
+		if !ok {
+			continue
+		}
+		allFunctions[i].TypeLimitations = restrictedTypes
 	}
 
 	return allFunctions, nil

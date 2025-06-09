@@ -43,9 +43,10 @@ func NewServer(name, version string, client protocol.ClientCloser, configuration
 type Server struct {
 	name, version string
 
-	stdlib []stdlib.Function
-	cache  *cache.Cache
-	client protocol.ClientCloser
+	stdlib    []stdlib.Function
+	stdlibMap map[string]stdlib.Function
+	cache     *cache.Cache
+	client    protocol.ClientCloser
 
 	configuration      Configuration
 	clientCapabilities protocol.ClientCapabilities
@@ -205,6 +206,10 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 		if s.stdlib, err = stdlib.Functions(); err != nil {
 			return nil, err
 		}
+	}
+	s.stdlibMap = map[string]stdlib.Function{}
+	for _, stdFunc := range s.stdlib {
+		s.stdlibMap[stdFunc.Name] = stdFunc
 	}
 
 	return &protocol.InitializeResult{

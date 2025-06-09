@@ -851,6 +851,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		return items
 	}
 
+	items = append(items, s.createSnippets(searchstack, node)...)
 	switch object := node.(type) {
 	case *ast.DesugaredObject:
 
@@ -870,8 +871,6 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 				}
 			}
 		}
-	case *ast.Array:
-		items = append(items, s.createArraySnippets(searchstack, pos)...)
 	default:
 	}
 
@@ -1118,7 +1117,6 @@ func (s *Server) createCompletionItemSurround(
 	postfix string,
 	kind protocol.CompletionItemKind,
 	stack *nodestack.NodeStack,
-	cursorPos protocol.Position,
 ) protocol.CompletionItem {
 	firstNode := stack.Peek()
 	lastNode := stack.PeekFront()
@@ -1143,8 +1141,8 @@ func (s *Server) createCompletionItemSurround(
 		TextEdit: &protocol.TextEdit{
 			NewText: text,
 			Range: protocol.Range{
-				Start: cursorPos,
-				End:   cursorPos,
+				Start: pos,
+				End:   pos,
 			},
 		},
 		// Remove the old text

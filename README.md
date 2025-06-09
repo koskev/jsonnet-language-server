@@ -73,7 +73,7 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 #### completion
 | Key    | type | description |
 | -------- | ------- | ------- |
-| enable_array_snippets | bool    | Enable support for array snippets. These are still broken in a bunch of cases. E.g. this allows to complete `array.length` which resolves to `std.length(array)` |
+| enable_snippets | bool    | Enable support for snippets. These are still broken in a bunch of cases. E.g. this allows to complete `array.length` which resolves to `std.length(array)` |
 
 ### New features
 

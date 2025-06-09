@@ -45,7 +45,7 @@ type ExtCodeConfig struct {
 }
 
 type CompletionConfig struct {
-	EnableArraySnippets bool `json:"enable_array_snippets"`
+	EnableSnippets bool `json:"enable_snippets"`
 }
 
 type Configuration struct {
