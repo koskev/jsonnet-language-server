@@ -67,6 +67,7 @@ func contains(t *testing.T, funcs []Function, expected Function) {
 		// We don't care about these. Only the markdown
 		f.Description = nil
 		f.RenderedDescription = ""
+		f.TypeLimitations = nil
 		assert.Equal(t, expected, f)
 		return
 	}
