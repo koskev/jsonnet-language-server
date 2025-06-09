@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
+	"github.com/grafana/jsonnet-language-server/pkg/server/completion"
 	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	log "github.com/sirupsen/logrus"
@@ -24,8 +25,8 @@ func (s *StdSingleParamSnippet) applyTemplate(node ast.Node, callstack *nodestac
 	firstNode := callstack.Peek()
 	lastNode := callstack.PeekFront()
 
-	beginTextPos := locationToIndex(firstNode.Loc().Begin, content)
-	endTextPos := locationToIndex(lastNode.Loc().End, content)
+	beginTextPos := completion.LocationToIndex(firstNode.Loc().Begin, content)
+	endTextPos := completion.LocationToIndex(lastNode.Loc().End, content)
 	callText := content[beginTextPos:endTextPos]
 
 	pos := position.ASTToProtocol(lastNode.Loc().End)

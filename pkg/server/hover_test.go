@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/sirupsen/logrus"
@@ -295,7 +296,7 @@ func TestHover(t *testing.T) {
 				},
 			}
 
-			server := NewServer("any", "test version", nil, Configuration{
+			server := NewServer("any", "test version", nil, config.Configuration{
 				JPaths: []string{"testdata", filepath.Join(filepath.Dir(tc.filename), "vendor")},
 			})
 			serverOpenTestFile(t, server, tc.filename)
@@ -321,7 +322,7 @@ func TestHoverGoToDefinitionTests(t *testing.T) {
 				},
 			}
 
-			server := NewServer("any", "test version", nil, Configuration{
+			server := NewServer("any", "test version", nil, config.Configuration{
 				JPaths: []string{"testdata", filepath.Join(filepath.Dir(tc.filename), "vendor")},
 			})
 			serverOpenTestFile(t, server, tc.filename)

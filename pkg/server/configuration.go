@@ -14,6 +14,7 @@ import (
 
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/formatter"
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/jdbaldry/go-language-server-protocol/jsonrpc2"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/mitchellh/mapstructure"
@@ -21,54 +22,6 @@ import (
 )
 
 var extCodeSuffix = ".extcode.jsonnet"
-
-type InlayFunctionArgs struct {
-	ShowWithSameName bool `json:"show_with_same_name"`
-}
-
-type ConfigurationInlay struct {
-	// Of course go does neither support options nor default values...
-	// So since go is a stupid language and I don't want to hack proper defaults in they are just all false by default
-	EnableDebugAst     bool `json:"enable_debug_ast"`
-	EnableIndexValue   bool `json:"enable_index_value"`
-	EnableFunctionArgs bool `json:"enable_function_args"`
-
-	FunctionArgs InlayFunctionArgs `json:"function_args"`
-}
-
-type WorkaroundConfig struct {
-	AssumeTrueConditionOnError bool `json:"assume_true_condition_on_error"`
-}
-
-type ExtCodeConfig struct {
-	FindUpwards bool `json:"find_upwards"`
-}
-
-type CompletionConfig struct {
-	EnableSnippets bool `json:"enable_snippets"`
-}
-
-type Configuration struct {
-	ResolvePathsWithTanka bool
-	JPaths                []string
-	ExtVars               map[string]string
-	ExtCode               map[string]string
-	FormattingOptions     formatter.Options
-
-	EnableEvalDiagnostics     bool
-	EnableLintDiagnostics     bool
-	ShowDocstringInCompletion bool
-	MaxInlayLength            int
-	Inlay                     ConfigurationInlay
-
-	EnableSemanticTokens bool
-	UseTypeInDetail      bool
-
-	Workarounds WorkaroundConfig
-
-	ExtCodeConfig ExtCodeConfig
-	Completion    CompletionConfig
-}
 
 // TODO: currently partial config changes are not supported for all settings (due to just unmarshalling the configs). However, the old code is stupid as well (but correct :) )
 //
@@ -158,7 +111,7 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 				return fmt.Errorf("%w: unsupported settings value for max_inlay_length. expected int. got: %T", jsonrpc2.ErrInvalidParams, sv)
 			}
 		case "inlay_config":
-			var inlayConfig ConfigurationInlay
+			var inlayConfig config.ConfigurationInlay
 			stringMap, ok := sv.(map[string]any)
 			if !ok {
 				return fmt.Errorf("%w: unsupported settings value for inlay_config. Expected json object. got: %T", jsonrpc2.ErrInvalidParams, sv)
@@ -173,7 +126,7 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 			}
 			s.configuration.Inlay = inlayConfig
 		case "workarounds":
-			var workaroundConfig WorkaroundConfig
+			var workaroundConfig config.WorkaroundConfig
 			stringMap, ok := sv.(map[string]any)
 			if !ok {
 				return fmt.Errorf("%w: unsupported settings value for workarounds. Expected json object. got: %T", jsonrpc2.ErrInvalidParams, sv)
@@ -188,7 +141,7 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 			}
 			s.configuration.Workarounds = workaroundConfig
 		case "ext_code_config":
-			var extCodeConfig ExtCodeConfig
+			var extCodeConfig config.ExtCodeConfig
 			stringMap, ok := sv.(map[string]any)
 			if !ok {
 				return fmt.Errorf("%w: unsupported settings value for ext_code_config. Expected json object. got: %T", jsonrpc2.ErrInvalidParams, sv)
@@ -217,14 +170,8 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 				return fmt.Errorf("%w: unsupported settings value for enable_semantic_tokens. expected boolean. got: %T", jsonrpc2.ErrInvalidParams, sv)
 			}
 
-		case "use_type_in_detail":
-			if boolVal, ok := sv.(bool); ok {
-				s.configuration.UseTypeInDetail = boolVal
-			} else {
-				return fmt.Errorf("%w: unsupported settings value for use_type_in_detail. expected boolean. got: %T", jsonrpc2.ErrInvalidParams, sv)
-			}
 		case "completion":
-			var completionConfig CompletionConfig
+			var completionConfig config.CompletionConfig
 			stringMap, ok := sv.(map[string]any)
 			if !ok {
 				return fmt.Errorf("%w: unsupported settings value for completion. Expected json object. got: %T", jsonrpc2.ErrInvalidParams, sv)
@@ -290,7 +237,7 @@ func (s *Server) parseFormattingOpts(unparsed interface{}) (formatter.Options, e
 	return opts, nil
 }
 
-func (s *Server) loadExtCodeFiles(config ExtCodeConfig) (map[string]string, error) {
+func (s *Server) loadExtCodeFiles(config config.ExtCodeConfig) (map[string]string, error) {
 	currentPath := "./"
 
 	fileMap := map[string]string{}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-jsonnet/formatter"
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
 	"github.com/jdbaldry/go-language-server-protocol/jsonrpc2"
@@ -42,7 +43,7 @@ func testServer(t *testing.T, stdlib []stdlib.Function) (server *Server) {
 	stream := jsonrpc2.NewHeaderStream(utils.NewStdio(nil, fakeWriterCloser{io.Discard}))
 	conn := jsonrpc2.NewConn(stream)
 	client := protocol.ClientDispatcher(conn)
-	server = NewServer("jsonnet-language-server", "dev", client, Configuration{
+	server = NewServer("jsonnet-language-server", "dev", client, config.Configuration{
 		FormattingOptions: formatter.DefaultOptions(),
 	})
 	server.stdlib = stdlib

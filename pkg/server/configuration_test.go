@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/go-jsonnet/formatter"
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/stretchr/testify/assert"
 )
@@ -155,7 +156,7 @@ func TestConfiguration_Formatting(t *testing.T) {
 	type kase struct {
 		name                  string
 		settings              interface{}
-		expectedConfiguration Configuration
+		expectedConfiguration config.Configuration
 		expectedErr           error
 	}
 
@@ -178,7 +179,7 @@ func TestConfiguration_Formatting(t *testing.T) {
 					// not setting StripAllButComments
 				},
 			},
-			expectedConfiguration: Configuration{
+			expectedConfiguration: config.Configuration{
 				FormattingOptions: func() formatter.Options {
 					opts := formatter.DefaultOptions()
 					opts.Indent = 4
@@ -228,7 +229,7 @@ func TestConfiguration_Formatting(t *testing.T) {
 			settings: map[string]interface{}{
 				"formatting": map[string]interface{}{},
 			},
-			expectedConfiguration: Configuration{FormattingOptions: formatter.DefaultOptions()},
+			expectedConfiguration: config.Configuration{FormattingOptions: formatter.DefaultOptions()},
 		},
 		{
 			name: "invalid jpath type",
@@ -287,7 +288,7 @@ func TestConfiguration_Formatting(t *testing.T) {
 				"enable_eval_diagnostics":  false,
 				"enable_lint_diagnostics":  true,
 			},
-			expectedConfiguration: Configuration{
+			expectedConfiguration: config.Configuration{
 				FormattingOptions: func() formatter.Options {
 					opts := formatter.DefaultOptions()
 					opts.Indent = 4

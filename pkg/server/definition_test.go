@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1017,7 +1018,7 @@ func TestDefinition(t *testing.T) {
 				},
 			}
 
-			server := NewServer("any", "test version", nil, Configuration{
+			server := NewServer("any", "test version", nil, config.Configuration{
 				JPaths: []string{"testdata", filepath.Join(filepath.Dir(tc.filename), "vendor")},
 			})
 			serverOpenTestFile(t, server, tc.filename)
@@ -1056,7 +1057,7 @@ func BenchmarkDefinition(b *testing.B) {
 					Position: tc.position,
 				},
 			}
-			server := NewServer("any", "test version", nil, Configuration{
+			server := NewServer("any", "test version", nil, config.Configuration{
 				JPaths: []string{"testdata"},
 			})
 			serverOpenTestFile(b, server, tc.filename)
@@ -1120,7 +1121,7 @@ func TestDefinitionFail(t *testing.T) {
 				},
 			}
 
-			server := NewServer("any", "test version", nil, Configuration{
+			server := NewServer("any", "test version", nil, config.Configuration{
 				JPaths: []string{"testdata"},
 			})
 			serverOpenTestFile(t, server, tc.filename)

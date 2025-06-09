@@ -10,6 +10,7 @@ import (
 	"github.com/grafana/jsonnet-language-server/pkg/cst"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
+	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 )
@@ -27,35 +28,9 @@ func getFunctionCallNode(stack *nodestack.NodeStack) (*ast.Apply, error) {
 	return nil, fmt.Errorf("unable to find any locals")
 }
 
-func (s *Server) getStdFunction(functionNode ast.Node) (*ast.Function, error) {
-	for _, freeVar := range functionNode.FreeVariables() {
-		if freeVar == "std" {
-			indexNode, ok := functionNode.(*ast.Index)
-			if !ok {
-				return nil, fmt.Errorf("std func is not have an index. Is %T", functionNode)
-			}
-			stringNode, ok := indexNode.Index.(*ast.LiteralString)
-			if !ok {
-				return nil, fmt.Errorf("std func index does not have a name")
-			}
-			for _, stdfunc := range s.stdlib {
-				if stdfunc.Name == stringNode.Value {
-					retFunc := &ast.Function{}
-					retFunc.LocRange = stringNode.LocRange
-					for _, param := range stdfunc.Params {
-						retFunc.Parameters = append(retFunc.Parameters, ast.Parameter{Name: ast.Identifier(param)})
-					}
-					return retFunc, nil
-				}
-			}
-		}
-	}
-	return nil, fmt.Errorf("not an std func")
-}
-
 func (s *Server) getFunctionCallTarget(root ast.Node, functionNode ast.Node, target protocol.DocumentURI) (*ast.Function, error) {
 	vm := s.getVM(target.SpanURI().Filename())
-	retFunc, err := s.getStdFunction(functionNode)
+	retFunc, err := stdlib.GetStdFunction(functionNode, &s.stdlibMap)
 	if err == nil {
 		return retFunc, nil
 	}

@@ -12,11 +12,12 @@ import (
 	"strings"
 
 	"github.com/google/go-jsonnet/ast"
-	"github.com/google/go-jsonnet/formatter"
 	"github.com/grafana/jsonnet-language-server/pkg/ast/processing"
 	"github.com/grafana/jsonnet-language-server/pkg/cst"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
+	"github.com/grafana/jsonnet-language-server/pkg/server/completion"
+	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	log "github.com/sirupsen/logrus"
@@ -29,10 +30,12 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		return nil, utils.LogErrorf("Completion: %s: %w", errorRetrievingDocument, err)
 	}
 
+	completionProvider := completion.NewCompletion(&s.stdlibMap)
+
 	line := getCompletionLine(doc.Item.Text, params.Position)
 
 	// Short-circuit if it's a stdlib completion
-	if items := s.completionStdLib(line); len(items) > 0 {
+	if items := completionProvider.CompletionStdLib(line); len(items) > 0 {
 		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 	}
 
@@ -56,7 +59,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 			log.Errorf("Unable to find node position: %v", err)
 			return nil, err
 		}
-		items := s.completeGlobal(info, searchStack, params.Position)
+		items := s.completeGlobal(info, searchStack, params.Position, completionProvider)
 		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 
 	case cst.CompleteImport:
@@ -125,7 +128,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 
 	log.Tracef("top item %v", reflect.TypeOf(searchStack.Peek()))
 
-	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex)
+	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex, completionProvider)
 	log.Tracef("Items: %+v", items)
 
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
@@ -822,7 +825,7 @@ stackLoop:
 }
 
 // Every node gets their own nodestack. E.g. to allow injecting local binds (for function args)
-func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos protocol.Position, noEndIndex bool) []protocol.CompletionItem {
+func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos protocol.Position, noEndIndex bool, completionProvider *completion.Completion) []protocol.CompletionItem {
 	items := []protocol.CompletionItem{}
 	searchstack = searchstack.Clone()
 	indexName := ""
@@ -866,7 +869,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 			if nameNode, ok := field.Name.(*ast.LiteralString); ok {
 				if strings.HasPrefix(nameNode.Value, indexName) {
 					items = append(items,
-						s.createCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
+						completionProvider.CreateCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
 					)
 				}
 			}
@@ -885,7 +888,7 @@ func getCompletionLine(fileContent string, position protocol.Position) string {
 	return line
 }
 
-func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
+func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position, completionProvider *completion.Completion) []protocol.CompletionItem {
 	items := []protocol.CompletionItem{}
 	if info.FunctionNode == nil {
 		return nil
@@ -909,7 +912,7 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 	}
 	var functionNode *ast.Function
 
-	stdFunctionNode, err := s.getStdFunction(foundNode.Peek())
+	stdFunctionNode, err := stdlib.GetStdFunction(foundNode.Peek(), &s.stdlibMap)
 
 	if err == nil {
 		functionNode = stdFunctionNode
@@ -984,14 +987,14 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 		// Skip i unnamed parameters as they are already set
 		// FIXME: if we complete "myFunc(a" a is considered a set argument and won't complete properly
 		if i >= len(applyNode.Arguments.Positional) && !slices.Contains(setNamedArgs, string(param.Name)) {
-			items = append(items, s.createCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
+			items = append(items, completionProvider.CreateCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
 		}
 	}
 
 	return items
 }
 
-func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
+func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position, complete *completion.Completion) []protocol.CompletionItem {
 	log.Tracef("##### Global path")
 	items := []protocol.CompletionItem{}
 	addSelf := false
@@ -999,7 +1002,7 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 	// TODO: determine when we can add a local
 	addLocal := true
 
-	items = append(items, s.completeFunctionArguments(info, stack, pos)...)
+	items = append(items, s.completeFunctionArguments(info, stack, pos, complete)...)
 
 	for !stack.IsEmpty() {
 		curr := stack.Pop()
@@ -1020,24 +1023,24 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 			binds = typedCurr.Binds
 		case *ast.Function:
 			for _, param := range typedCurr.Parameters {
-				items = append(items, s.createCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
+				items = append(items, complete.CreateCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
 			}
 		default:
 			break
 		}
 		for _, bind := range binds {
 			label := string(bind.Variable)
-			items = append(items, s.createCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
+			items = append(items, complete.CreateCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
 		}
 	}
 	if addSelf {
-		items = append(items, s.createCompletionItem("self", "", protocol.VariableCompletion, &ast.Self{}, pos, false))
+		items = append(items, complete.CreateCompletionItem("self", "", protocol.VariableCompletion, &ast.Self{}, pos, false))
 	}
 	if addSuper {
-		items = append(items, s.createCompletionItem("super", "", protocol.VariableCompletion, &ast.SuperIndex{}, pos, false))
+		items = append(items, complete.CreateCompletionItem("super", "", protocol.VariableCompletion, &ast.SuperIndex{}, pos, false))
 	}
 	if addLocal {
-		items = append(items, s.createCompletionItem("local", "", protocol.VariableCompletion, &ast.Local{}, pos, false))
+		items = append(items, complete.CreateCompletionItem("local", "", protocol.VariableCompletion, &ast.Local{}, pos, false))
 	}
 
 	filteredItems := []protocol.CompletionItem{}
@@ -1048,67 +1051,6 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 	}
 
 	return filteredItems
-}
-
-func (s *Server) completionStdLib(line string) []protocol.CompletionItem {
-	items := []protocol.CompletionItem{}
-
-	stdIndex := strings.LastIndex(line, "std.")
-	if stdIndex != -1 {
-		userInput := line[stdIndex+4:]
-		funcStartWith := []protocol.CompletionItem{}
-		funcContains := []protocol.CompletionItem{}
-		for _, f := range s.stdlib {
-			if f.Name == userInput {
-				break
-			}
-			lowerFuncName := strings.ToLower(f.Name)
-			findName := strings.ToLower(userInput)
-			item := protocol.CompletionItem{
-				Label:         f.Name,
-				Kind:          protocol.FunctionCompletion,
-				Detail:        f.Signature(),
-				InsertText:    strings.ReplaceAll(f.Signature(), "std.", ""),
-				Documentation: f.MarkdownDescription,
-			}
-
-			if len(findName) > 0 && strings.HasPrefix(lowerFuncName, findName) {
-				funcStartWith = append(funcStartWith, item)
-				continue
-			}
-
-			if strings.Contains(lowerFuncName, findName) {
-				funcContains = append(funcContains, item)
-			}
-		}
-
-		items = append(items, funcStartWith...)
-		items = append(items, funcContains...)
-	}
-
-	return items
-}
-
-func formatLabel(str string) string {
-	interStr := "interimPath" + str
-	fmtStr, _ := formatter.Format("", interStr, formatter.DefaultOptions())
-	ret, _ := strings.CutPrefix(fmtStr, "interimPath")
-	ret, _ = strings.CutPrefix(ret, ".")
-	ret = strings.TrimRight(ret, "\n")
-	return ret
-}
-
-func locationToIndex(pos ast.Location, text string) int {
-	idx := 0
-	lines := strings.Split(text, "\n")
-	for i, line := range lines {
-		if i+1 >= pos.Line {
-			idx += pos.Column - 1
-			break
-		}
-		idx += len(line) + 1 // Append the \n again
-	}
-	return idx
 }
 
 func (s *Server) createCompletionItemSurround(
@@ -1127,8 +1069,8 @@ func (s *Server) createCompletionItemSurround(
 		return protocol.CompletionItem{}
 	}
 
-	beginTextPos := locationToIndex(firstNode.Loc().Begin, doc.Item.Text)
-	endTextPos := locationToIndex(lastNode.Loc().End, doc.Item.Text)
+	beginTextPos := completion.LocationToIndex(firstNode.Loc().Begin, doc.Item.Text)
+	endTextPos := completion.LocationToIndex(lastNode.Loc().End, doc.Item.Text)
 	callText := doc.Item.Text[beginTextPos:endTextPos]
 
 	text := fmt.Sprintf("%s%s%s", prefix, callText, postfix)
@@ -1157,99 +1099,4 @@ func (s *Server) createCompletionItemSurround(
 		},
 		Kind: kind,
 	}
-}
-
-//nolint:unparam // Currently prefix is always called with ""
-func (s *Server) createCompletionItem(label, prefix string, kind protocol.CompletionItemKind, body ast.Node, position protocol.Position, tryEscape bool) protocol.CompletionItem {
-	paramsString := ""
-	if asFunc, ok := body.(*ast.Function); ok {
-		kind = protocol.FunctionCompletion
-		params := []string{}
-		for _, param := range asFunc.Parameters {
-			params = append(params, string(param.Name))
-		}
-		paramsString = "(" + strings.Join(params, ", ") + ")"
-	}
-
-	var insertText string
-	if tryEscape {
-		insertText = formatLabel("['" + label + "']" + paramsString)
-	} else {
-		insertText = label
-	}
-
-	concat := ""
-	characterStartPosition := position.Character - 1
-	if prefix == "" {
-		characterStartPosition = position.Character
-	}
-	if prefix != "" && !strings.HasPrefix(insertText, "[") {
-		concat = "."
-		characterStartPosition = position.Character
-	}
-	detail := prefix + concat + insertText
-
-	if s.configuration.UseTypeInDetail {
-		detail = typeToString(body)
-	}
-
-	item := protocol.CompletionItem{
-		Label:  label,
-		Detail: detail,
-		Kind:   kind,
-		LabelDetails: &protocol.CompletionItemLabelDetails{
-			Description: typeToString(body),
-		},
-		InsertText: insertText,
-	}
-
-	if strings.HasPrefix(insertText, "[") {
-		item.TextEdit = &protocol.TextEdit{
-			Range: protocol.Range{
-				Start: protocol.Position{
-					Line:      position.Line,
-					Character: characterStartPosition,
-				},
-				End: protocol.Position{
-					Line:      position.Line,
-					Character: position.Character,
-				},
-			},
-			NewText: insertText,
-		}
-	}
-
-	return item
-}
-
-func typeToString(t ast.Node) string {
-	switch t.(type) {
-	case *ast.Array:
-		return "array"
-	case *ast.LiteralBoolean:
-		return "boolean"
-	case *ast.Function:
-		return "function"
-	case *ast.LiteralNull:
-		return "null"
-	case *ast.LiteralNumber:
-		return "number"
-	case *ast.Object, *ast.DesugaredObject:
-		return "object"
-	case *ast.LiteralString:
-		return "string"
-	case *ast.Import, *ast.ImportStr:
-		return "import"
-	case *ast.Index:
-		return "object field"
-	case *ast.Var:
-		return "variable"
-	case *ast.SuperIndex:
-		return "super"
-	}
-	typeString := reflect.TypeOf(t).String()
-	typeString = strings.ReplaceAll(typeString, "*ast.", "")
-	typeString = strings.ToLower(typeString)
-
-	return typeString
 }

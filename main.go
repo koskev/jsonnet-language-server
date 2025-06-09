@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/go-jsonnet/formatter"
 	"github.com/grafana/jsonnet-language-server/pkg/server"
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
 	"github.com/jdbaldry/go-language-server-protocol/jsonrpc2"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
@@ -54,7 +55,7 @@ Environment variables:
 }
 
 func main() {
-	config := server.Configuration{
+	config := config.Configuration{
 		JPaths:                    filepath.SplitList(os.Getenv("JSONNET_PATH")),
 		FormattingOptions:         formatter.DefaultOptions(),
 		ShowDocstringInCompletion: false,

@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -380,7 +381,7 @@ func TestSymbols(t *testing.T) {
 				},
 			}
 
-			server := NewServer("any", "test version", nil, Configuration{
+			server := NewServer("any", "test version", nil, config.Configuration{
 				JPaths: []string{"testdata"},
 			})
 			serverOpenTestFile(t, server, tc.filename)

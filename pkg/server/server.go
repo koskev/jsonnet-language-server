@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/cache"
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
 	tankaJsonnet "github.com/grafana/tanka/pkg/jsonnet/implementations/goimpl"
@@ -25,7 +26,7 @@ const (
 )
 
 // New returns a new language server.
-func NewServer(name, version string, client protocol.ClientCloser, configuration Configuration) *Server {
+func NewServer(name, version string, client protocol.ClientCloser, configuration config.Configuration) *Server {
 	server := &Server{
 		name:          name,
 		version:       version,
@@ -48,7 +49,7 @@ type Server struct {
 	cache     *cache.Cache
 	client    protocol.ClientCloser
 
-	configuration      Configuration
+	configuration      config.Configuration
 	clientCapabilities protocol.ClientCapabilities
 
 	// Diagnostics

@@ -3,6 +3,7 @@ package stdlib
 import (
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"regexp"
 	"strings"
@@ -163,4 +164,30 @@ func Functions() ([]Function, error) {
 	}
 
 	return allFunctions, nil
+}
+
+func GetStdFunction(functionNode ast.Node, stdLib *map[string]Function) (*ast.Function, error) {
+	for _, freeVar := range functionNode.FreeVariables() {
+		if freeVar == "std" {
+			indexNode, ok := functionNode.(*ast.Index)
+			if !ok {
+				return nil, fmt.Errorf("std func is not have an index. Is %T", functionNode)
+			}
+			stringNode, ok := indexNode.Index.(*ast.LiteralString)
+			if !ok {
+				return nil, fmt.Errorf("std func index does not have a name")
+			}
+			stdFunc, ok := (*stdLib)[stringNode.Value]
+			if !ok {
+				return nil, fmt.Errorf("finding std function \"%s\"", stringNode.Value)
+			}
+			retFunc := &ast.Function{}
+			retFunc.LocRange = stringNode.LocRange
+			for _, param := range stdFunc.Params {
+				retFunc.Parameters = append(retFunc.Parameters, ast.Parameter{Name: ast.Identifier(param)})
+			}
+			return retFunc, nil
+		}
+	}
+	return nil, fmt.Errorf("not an std func")
 }

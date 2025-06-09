@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	"github.com/stretchr/testify/assert"
@@ -2297,7 +2298,7 @@ func TestCompletion(t *testing.T) {
 			server.configuration.ExtCode = map[string]string{
 				"code": "{ objA: 5, ['%s' % 'computed']: 3}",
 			}
-			server.configuration.Workarounds = WorkaroundConfig{
+			server.configuration.Workarounds = config.WorkaroundConfig{
 				AssumeTrueConditionOnError: true,
 			}
 			var version int32 = 2
