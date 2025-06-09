@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"maps"
 	"path/filepath"
 	"reflect"
 	"slices"
@@ -32,7 +31,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 
 	completionProvider := completion.NewCompletion(&s.stdlibMap)
 
-	line := getCompletionLine(doc.Item.Text, params.Position)
+	line := utils.GetCompletionLine(doc.Item.Text, params.Position)
 
 	// Short-circuit if it's a stdlib completion
 	if items := completionProvider.CompletionStdLib(line); len(items) > 0 {
@@ -132,62 +131,6 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 	log.Tracef("Items: %+v", items)
 
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
-}
-
-func DesugaredObjectFieldsToString(node *ast.DesugaredObject) string {
-	var builder strings.Builder
-
-	if node == nil {
-		return "nil"
-	}
-	for _, field := range node.Fields {
-		if fieldName, ok := field.Name.(*ast.LiteralString); ok {
-			builder.WriteString(fmt.Sprintf("Name: %v type: %+v\n", fieldName.Value, reflect.TypeOf(field.Body)))
-			if child, ok := field.Body.(*ast.DesugaredObject); ok {
-				builder.WriteString(DesugaredObjectFieldsToString(child))
-			}
-		}
-	}
-	return builder.String()
-}
-
-func getObjectFieldMap(object *ast.DesugaredObject) map[string]ast.DesugaredObjectField {
-	fieldMap := map[string]ast.DesugaredObjectField{}
-	for _, newField := range object.Fields {
-		if nameNode, ok := newField.Name.(*ast.LiteralString); ok {
-			fieldMap[nameNode.Value] = newField
-		}
-	}
-	return fieldMap
-}
-
-// Merges all desugared Objects into one
-// TODO: does not support + at the moment
-func mergeDesugaredObjects(objects []*ast.DesugaredObject) *ast.DesugaredObject {
-	if len(objects) == 0 {
-		return nil
-	}
-	var newObject ast.DesugaredObject
-
-	for len(objects) != 0 {
-		var object *ast.DesugaredObject
-		object, objects = objects[0], objects[1:]
-		newObject.Asserts = append(newObject.Asserts, object.Asserts...)
-		newObject.Fields = append(newObject.Fields, object.Fields...)
-		newFields := getObjectFieldMap(&newObject)
-		currentFields := getObjectFieldMap(object)
-		maps.Copy(newFields, currentFields)
-		// FUCK YOU GO AND YOUR STUPID FAKE ITERATORS! There is no way this isn't a feature. I have to miss something...
-		// This is the long version of a simple "map" call...
-		vals := make([]ast.DesugaredObjectField, 0, len(newFields))
-		for _, v := range newFields {
-			vals = append(vals, v)
-		}
-		newObject.Fields = vals
-
-		newObject.Locals = append(newObject.Locals, object.Locals...)
-	}
-	return &newObject
 }
 
 func (s *Server) ResolveApplyArguments(stack *nodestack.NodeStack, documentstack *nodestack.NodeStack) *nodestack.NodeStack {
@@ -409,11 +352,6 @@ searchLoop:
 	return objectStack
 }
 
-func compareSelf(selfNode ast.Node, other ast.Node) bool {
-	selfType := reflect.TypeFor[*ast.Self]()
-	return reflect.TypeOf(selfNode) == selfType && reflect.TypeOf(other) == selfType && selfNode.Context() == other.Context()
-}
-
 // TODO: handle appply in this function
 // Just add the apply node to the documentstack
 // Then on function search for the apply node and add the variables to the stack
@@ -494,7 +432,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			binaryChildren := processing.FlattenBinary(binary)
 			// Add all children except the self target
 			for _, child := range binaryChildren {
-				if !compareSelf(currentNode, child) {
+				if !utils.CompareSelf(currentNode, child) {
 					searchstack.Push(child)
 				}
 			}
@@ -612,7 +550,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				}
 				searchstack.Push(compiled)
 				if desugar, ok := compiled.(*ast.DesugaredObject); ok {
-					log.Tracef("Compiled desugar: %s", DesugaredObjectFieldsToString(desugar))
+					log.Tracef("Compiled desugar: %s", utils.DesugaredObjectFieldsToString(desugar))
 				}
 				log.Debugf("Compiled! %+v", reflect.TypeOf(compiled))
 				continue
@@ -715,7 +653,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			log.Errorf("Unhandled type in getDesugaredObject: %v", reflect.TypeOf(currentNode))
 		}
 	}
-	merged := mergeDesugaredObjects(desugaredObjects)
+	merged := utils.MergeDesugaredObjects(desugaredObjects)
 	if merged != nil {
 		documentstack.Push(merged)
 	}
@@ -778,7 +716,7 @@ stackLoop:
 			if !ok {
 				continue
 			}
-			log.Debugf("Finding %s in %s", indexName.Value, DesugaredObjectFieldsToString(baseObject))
+			log.Debugf("Finding %s in %s", indexName.Value, utils.DesugaredObjectFieldsToString(baseObject))
 			// Look at all fields of the desugared object
 			for _, field := range baseObject.Fields {
 				fieldName, ok := field.Name.(*ast.LiteralString)
@@ -820,7 +758,7 @@ stackLoop:
 			return nil
 		}
 	}
-	log.Debugf("finished object: %v", DesugaredObjectFieldsToString(baseObject))
+	log.Debugf("finished object: %v", utils.DesugaredObjectFieldsToString(baseObject))
 	return baseObject
 }
 
@@ -878,14 +816,6 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 	}
 
 	return items
-}
-
-func getCompletionLine(fileContent string, position protocol.Position) string {
-	line := strings.Split(fileContent, "\n")[position.Line]
-	charIndex := int(position.Character)
-	charIndex = min(charIndex, len(line))
-	line = line[:charIndex]
-	return line
 }
 
 func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position, completionProvider *completion.Completion) []protocol.CompletionItem {
@@ -1051,52 +981,4 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 	}
 
 	return filteredItems
-}
-
-func (s *Server) createCompletionItemSurround(
-	label string,
-	prefix string,
-	postfix string,
-	kind protocol.CompletionItemKind,
-	stack *nodestack.NodeStack,
-) protocol.CompletionItem {
-	firstNode := stack.Peek()
-	lastNode := stack.PeekFront()
-
-	doc, err := s.cache.Get(protocol.URIFromPath(firstNode.Loc().FileName))
-	if err != nil {
-		log.Errorf("Could not get the document %s: %v", firstNode.Loc().FileName, err)
-		return protocol.CompletionItem{}
-	}
-
-	beginTextPos := completion.LocationToIndex(firstNode.Loc().Begin, doc.Item.Text)
-	endTextPos := completion.LocationToIndex(lastNode.Loc().End, doc.Item.Text)
-	callText := doc.Item.Text[beginTextPos:endTextPos]
-
-	text := fmt.Sprintf("%s%s%s", prefix, callText, postfix)
-
-	pos := position.ASTToProtocol(lastNode.Loc().End)
-	// Add a character due to the .
-	pos.Character++
-	return protocol.CompletionItem{
-		Label: label,
-		TextEdit: &protocol.TextEdit{
-			NewText: text,
-			Range: protocol.Range{
-				Start: pos,
-				End:   pos,
-			},
-		},
-		// Remove the old text
-		AdditionalTextEdits: []protocol.TextEdit{
-			{
-				NewText: "",
-				Range: protocol.Range{
-					Start: position.ASTToProtocol(firstNode.Loc().Begin),
-					End:   pos,
-				},
-			},
-		},
-		Kind: kind,
-	}
 }
