@@ -3,20 +3,26 @@ package completion
 import (
 	"strings"
 
+	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 )
 
+type GetVMFunction func(filename string) *jsonnet.VM
+
 type Completion struct {
 	stdLib *map[string]stdlib.Function
 	Config config.CompletionConfig
+
+	GetVMCallback GetVMFunction
 }
 
-func NewCompletion(stdLib *map[string]stdlib.Function) *Completion {
+func NewCompletion(stdLib *map[string]stdlib.Function, getVM GetVMFunction) *Completion {
 	return &Completion{
-		stdLib: stdLib,
+		stdLib:        stdLib,
+		GetVMCallback: getVM,
 	}
 }
 

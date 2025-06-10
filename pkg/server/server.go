@@ -11,6 +11,7 @@ import (
 	"github.com/google/go-jsonnet"
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/cache"
+	"github.com/grafana/jsonnet-language-server/pkg/server/completion"
 	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
@@ -56,6 +57,9 @@ type Server struct {
 	diagMutex   sync.RWMutex
 	diagQueue   map[protocol.DocumentURI]struct{}
 	diagRunning sync.Map
+
+	// Completion
+	completionProvider *completion.Completion
 }
 
 func (s *Server) GetCache() *cache.Cache {
@@ -212,6 +216,7 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 	for _, stdFunc := range s.stdlib {
 		s.stdlibMap[stdFunc.Name] = stdFunc
 	}
+	s.completionProvider = completion.NewCompletion(&s.stdlibMap, s.getVM)
 
 	return &protocol.InitializeResult{
 		Capabilities: protocol.ServerCapabilities{

@@ -99,7 +99,7 @@ func (s *StdSingleParamSnippet) applyTemplate(node ast.Node, callstack *nodestac
 func (s *Server) createSnippets(searchstack *nodestack.NodeStack, node ast.Node) []protocol.CompletionItem {
 	items := []protocol.CompletionItem{}
 	if s.configuration.Completion.EnableSnippets {
-		callstack := s.buildCallStack(searchstack)
+		callstack := completion.BuildCallStack(searchstack)
 
 		doc, err := s.cache.Get(protocol.URIFromPath(node.Loc().FileName))
 		if err != nil {

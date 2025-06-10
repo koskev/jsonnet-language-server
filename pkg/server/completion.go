@@ -29,12 +29,10 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 		return nil, utils.LogErrorf("Completion: %s: %w", errorRetrievingDocument, err)
 	}
 
-	completionProvider := completion.NewCompletion(&s.stdlibMap)
-
 	line := utils.GetCompletionLine(doc.Item.Text, params.Position)
 
 	// Short-circuit if it's a stdlib completion
-	if items := completionProvider.CompletionStdLib(line); len(items) > 0 {
+	if items := s.completionProvider.CompletionStdLib(line); len(items) > 0 {
 		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 	}
 
@@ -58,7 +56,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 			log.Errorf("Unable to find node position: %v", err)
 			return nil, err
 		}
-		items := s.completeGlobal(info, searchStack, params.Position, completionProvider)
+		items := s.completeGlobal(info, searchStack, params.Position)
 		return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
 
 	case cst.CompleteImport:
@@ -127,7 +125,7 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 
 	log.Tracef("top item %v", reflect.TypeOf(searchStack.Peek()))
 
-	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex, completionProvider)
+	items := s.createCompletionItems(searchStack, params.Position, info.InjectIndex)
 	log.Tracef("Items: %+v", items)
 
 	return &protocol.CompletionList{IsIncomplete: false, Items: items}, nil
@@ -207,149 +205,7 @@ stackLoop:
 		return nil
 	}
 
-	return s.addFunctionToStack(applyNode, funcNode, searchstack)
-}
-
-func (s *Server) addFunctionToStack(applyNode *ast.Apply, funcNode *ast.Function, searchstack *nodestack.NodeStack) *nodestack.NodeStack {
-	searchstack = searchstack.Clone()
-	// Get all positional arguments first. After that only named arguments remain
-	for i, arg := range applyNode.Arguments.Positional {
-		log.Tracef("Positional argument: %s", funcNode.Parameters[i].Name)
-		searchstack.Push(&ast.Local{
-			Binds: []ast.LocalBind{{
-				Variable: funcNode.Parameters[i].Name,
-				Body:     arg.Expr,
-			}}})
-	}
-	for _, arg := range applyNode.Arguments.Named {
-		log.Tracef("Named argument: %+v", arg)
-		searchstack.Push(&ast.Local{
-			Binds: []ast.LocalBind{{
-				Variable: arg.Name,
-				Body:     arg.Arg,
-			}}})
-	}
-	searchstack.Push(funcNode.Body)
-	return searchstack
-}
-
-func (s *Server) buildCallStack(documentstack *nodestack.NodeStack) *nodestack.NodeStack {
-	node := documentstack.Pop()
-	nodesToSearch := nodestack.NewNodeStack(node)
-	callStack := &nodestack.NodeStack{}
-	log.Tracef("Building call stack from %v", reflect.TypeOf(node))
-
-	for !nodesToSearch.IsEmpty() {
-		currentNode := nodesToSearch.Pop()
-		log.Tracef("CALL BUILD %v", reflect.TypeOf(currentNode))
-		switch currentNode := currentNode.(type) {
-		case *ast.Index:
-			log.Tracef("INDEX TARGET %v", reflect.TypeOf(currentNode.Target))
-			swapNode := false
-			if prevApply, ok := callStack.Peek().(*ast.Apply); ok {
-				if prevApply.Target == currentNode {
-					// If the apply is the current target, we need to swap the order. This way the apply binds get added before the index for the function
-					log.Tracef("REMOVING PREV with target %v", reflect.TypeOf(currentNode.Target))
-					swapNode = false
-				}
-			}
-			if swapNode {
-				tmp := callStack.Pop()
-				callStack.Push(currentNode)
-				callStack.Push(tmp)
-			} else {
-				callStack.Push(currentNode)
-			}
-			nodesToSearch.Push(currentNode.Target)
-			log.Tracef("New target %v %v", reflect.TypeOf(currentNode.Target), currentNode.Index)
-		case *ast.Var:
-			// TODO: somehow figure out function index stuff
-			if _, ok := callStack.Peek().(*ast.Apply); !ok {
-				callStack.Push(currentNode)
-			}
-			// Inside a function call the stack also contains the function. If we see a var we can abort as a var always marks the end of a "call"
-
-			// Special case: if we have an array the next node in the documentstack is an index
-			varNode, err := processing.ResolveVar(currentNode, documentstack)
-			if err != nil {
-				log.Errorf("could not resolve var while building stack: %v", err)
-				continue
-			}
-			if indexNode, ok := documentstack.Peek().(*ast.Index); ok && indexNode != nil && reflect.TypeOf(varNode) == reflect.TypeFor[*ast.Array]() {
-				callStack.PushFront(indexNode)
-			}
-		case *ast.Apply:
-			// If callstack top is an index to the same node we'll delete it
-			log.Tracef("TARGET %v", reflect.TypeOf(currentNode.Target))
-			callStack.Push(currentNode)
-			nodesToSearch.Push(currentNode.Target)
-		default:
-			callStack.Push(currentNode)
-		}
-	}
-
-	for _, n := range callStack.Stack {
-		log.Tracef("## Call: %v", reflect.TypeOf(n))
-	}
-	return callStack
-}
-
-func (s *Server) evaluateObjectFields(node *ast.DesugaredObject, documentstack *nodestack.NodeStack) *ast.DesugaredObject {
-	// TODO: node.clone()
-	for i, field := range node.Fields {
-		resolved := s.desugaredObjectKeyToString(field.Name, documentstack)
-		if resolved != nil {
-			node.Fields[i].Name = resolved
-		}
-	}
-	return node
-}
-
-func (s *Server) desugaredObjectKeyToString(node ast.Node, documentstack *nodestack.NodeStack) *ast.LiteralString {
-	// handle conditional
-	switch currentNode := node.(type) {
-	case *ast.LiteralString:
-		return currentNode
-	case *ast.Conditional:
-		vm := s.getVM(node.Loc().FileName)
-		compiled, err := processing.CompileNodeFromStack(currentNode.Cond, documentstack, vm)
-		if err != nil {
-			log.Errorf("Failed to compile node %v", err)
-			return nil
-		}
-		result, ok := compiled.(*ast.LiteralBoolean)
-		if !ok {
-			log.Errorf("Result is not boolean but %T", compiled)
-			return nil
-		}
-		if result.Value {
-			return s.desugaredObjectKeyToString(currentNode.BranchTrue, documentstack)
-		}
-		return s.desugaredObjectKeyToString(currentNode.BranchFalse, documentstack)
-	}
-
-	return nil
-}
-
-//nolint:unused
-func (s *Server) getReturnObject(root ast.Node) *nodestack.NodeStack {
-	objectStack := nodestack.NewNodeStack(root)
-	searchstack := nodestack.NewNodeStack(root)
-
-searchLoop:
-	for !searchstack.IsEmpty() {
-		switch currentNode := searchstack.Pop().(type) {
-		case *ast.Local:
-			log.Tracef("body type %v", reflect.TypeOf(currentNode.Body))
-			searchstack.Push(currentNode.Body)
-			objectStack.Push(currentNode.Body)
-
-		default:
-			log.Debugf("Breaking at %v", reflect.TypeOf(currentNode))
-			break searchLoop
-		}
-	}
-	return objectStack
+	return completion.AddFunctionToStack(applyNode, funcNode, searchstack)
 }
 
 // TODO: handle appply in this function
@@ -388,7 +244,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				}
 			}
 		case *ast.DesugaredObject:
-			obj := s.evaluateObjectFields(currentNode, documentstack)
+			obj := s.completionProvider.EvaluateObjectFields(currentNode, documentstack)
 			if obj != nil {
 				desugaredObjects = append(desugaredObjects, currentNode)
 			}
@@ -604,7 +460,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				}
 			}
 		case *ast.Conditional:
-			resolved, err := s.resolveConditional(currentNode, documentstack)
+			resolved, err := s.completionProvider.ResolveConditional(currentNode, documentstack)
 			if err != nil {
 				log.Errorf("Failed to resolve conditional: %v", err)
 				if s.configuration.Workarounds.AssumeTrueConditionOnError {
@@ -660,29 +516,12 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 	return merged
 }
 
-func (s *Server) resolveConditional(node *ast.Conditional, documentstack *nodestack.NodeStack) (ast.Node, error) {
-	filename := documentstack.GetNextFilename()
-	vm := s.getVM(filename)
-	compiled, err := processing.CompileNodeFromStack(node.Cond, documentstack, vm)
-	if err != nil {
-		return nil, err
-	}
-	result, ok := compiled.(*ast.LiteralBoolean)
-	if !ok {
-		return nil, fmt.Errorf("node did not compile to literal boolean. Got %T", compiled)
-	}
-	if result.Value {
-		return node.BranchTrue, nil
-	}
-	return node.BranchFalse, nil
-}
-
 // a.b.c(arg).d.e
 // start at a
 // get desurgared object for each step
 // does only act on complete indices. The current typing index is handled one layer above
 func (s *Server) buildNode(documentstack *nodestack.NodeStack) ast.Node {
-	callstack := s.buildCallStack(documentstack)
+	callstack := completion.BuildCallStack(documentstack)
 
 	log.Debugf("Callstack %+v", callstack)
 	// First object is var or func -> resolve to desugared object (including their keys)
@@ -734,7 +573,7 @@ stackLoop:
 					if applyOk && funcOk {
 						// Pop the apply Node
 						callstack.Pop()
-						stack := s.addFunctionToStack(applyNode, funcNode, documentstack)
+						stack := completion.AddFunctionToStack(applyNode, funcNode, documentstack)
 						if stack != nil {
 							documentstack.Stack = append(documentstack.Stack, stack.Stack...)
 						}
@@ -763,7 +602,7 @@ stackLoop:
 }
 
 // Every node gets their own nodestack. E.g. to allow injecting local binds (for function args)
-func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos protocol.Position, noEndIndex bool, completionProvider *completion.Completion) []protocol.CompletionItem {
+func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos protocol.Position, noEndIndex bool) []protocol.CompletionItem {
 	items := []protocol.CompletionItem{}
 	searchstack = searchstack.Clone()
 	indexName := ""
@@ -807,7 +646,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 			if nameNode, ok := field.Name.(*ast.LiteralString); ok {
 				if strings.HasPrefix(nameNode.Value, indexName) {
 					items = append(items,
-						completionProvider.CreateCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
+						s.completionProvider.CreateCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
 					)
 				}
 			}
@@ -818,7 +657,7 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 	return items
 }
 
-func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position, completionProvider *completion.Completion) []protocol.CompletionItem {
+func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
 	items := []protocol.CompletionItem{}
 	if info.FunctionNode == nil {
 		return nil
@@ -917,61 +756,43 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 		// Skip i unnamed parameters as they are already set
 		// FIXME: if we complete "myFunc(a" a is considered a set argument and won't complete properly
 		if i >= len(applyNode.Arguments.Positional) && !slices.Contains(setNamedArgs, string(param.Name)) {
-			items = append(items, completionProvider.CreateCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
+			items = append(items, s.completionProvider.CreateCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
 		}
 	}
 
 	return items
 }
 
-func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position, complete *completion.Completion) []protocol.CompletionItem {
+func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.NodeStack, pos protocol.Position) []protocol.CompletionItem {
 	log.Tracef("##### Global path")
 	items := []protocol.CompletionItem{}
-	addSelf := false
-	addSuper := false
-	// TODO: determine when we can add a local
-	addLocal := true
 
-	items = append(items, s.completeFunctionArguments(info, stack, pos, complete)...)
+	items = append(items, s.completeFunctionArguments(info, stack, pos)...)
 
-	for !stack.IsEmpty() {
-		curr := stack.Pop()
+	searchStack := stack.Clone()
+
+	for !searchStack.IsEmpty() {
+		curr := searchStack.Pop()
 		var binds ast.LocalBinds
 		switch typedCurr := curr.(type) {
 		case *ast.DesugaredObject:
-			addSelf = true
 			binds = typedCurr.Locals
-			parentNode, _, err := stack.FindNext(reflect.TypeFor[*ast.Binary]())
-			if err != nil {
-				break
-			}
-			//nolint:forcetypeassert // go stuff
-			parentBinary := parentNode.(*ast.Binary)
-			addSuper = parentBinary.Right == curr
-
 		case *ast.Local:
 			binds = typedCurr.Binds
 		case *ast.Function:
 			for _, param := range typedCurr.Parameters {
-				items = append(items, complete.CreateCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
+				items = append(items, s.completionProvider.CreateCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
 			}
 		default:
 			break
 		}
 		for _, bind := range binds {
 			label := string(bind.Variable)
-			items = append(items, complete.CreateCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
+			items = append(items, s.completionProvider.CreateCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
 		}
 	}
-	if addSelf {
-		items = append(items, complete.CreateCompletionItem("self", "", protocol.VariableCompletion, &ast.Self{}, pos, false))
-	}
-	if addSuper {
-		items = append(items, complete.CreateCompletionItem("super", "", protocol.VariableCompletion, &ast.SuperIndex{}, pos, false))
-	}
-	if addLocal {
-		items = append(items, complete.CreateCompletionItem("local", "", protocol.VariableCompletion, &ast.Local{}, pos, false))
-	}
+
+	items = append(items, s.completionProvider.CompleteKeywords(stack, pos)...)
 
 	filteredItems := []protocol.CompletionItem{}
 	for _, item := range items {
