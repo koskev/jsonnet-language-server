@@ -78,7 +78,7 @@ func TestGetTextEdits(t *testing.T) {
 func TestFormatting(t *testing.T) {
 	type kase struct {
 		name        string
-		settings    interface{}
+		settings    any
 		fileContent string
 
 		expected []protocol.TextEdit
@@ -95,8 +95,8 @@ func TestFormatting(t *testing.T) {
 		},
 		{
 			name: "new lines with indentation",
-			settings: map[string]interface{}{
-				"formatting": map[string]interface{}{"Indent": 4},
+			settings: map[string]any{
+				"formatting": map[string]any{"Indent": 4},
 			},
 			fileContent: `
 {

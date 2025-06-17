@@ -99,8 +99,8 @@ func (s *Server) getInlayHintIndex(tree *nodetree.NodeTree, vm *jsonnet.VM) []pr
 		}
 		// Remove newline and duplicate whitespaces
 		val = strings.Join(strings.Fields(val), " ")
-		if len(val) > s.configuration.MaxInlayLength {
-			val = fmt.Sprintf("%s...", val[:s.configuration.MaxInlayLength])
+		if len(val) > s.configuration.Inlay.MaxLength {
+			val = fmt.Sprintf("%s...", val[:s.configuration.Inlay.MaxLength])
 		}
 
 		pos := position.ASTToProtocol(currentNode.Loc().End)

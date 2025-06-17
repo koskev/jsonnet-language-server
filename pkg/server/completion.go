@@ -796,7 +796,7 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 
 	filteredItems := []protocol.CompletionItem{}
 	for _, item := range items {
-		if strings.HasPrefix(item.Label, info.Index) && item.Label != "$" && (!strings.HasPrefix(item.Label, "#") || !s.configuration.ShowDocstringInCompletion) {
+		if strings.HasPrefix(item.Label, info.Index) && item.Label != "$" && (!strings.HasPrefix(item.Label, "#") || !s.configuration.Completion.ShowDocstring) {
 			filteredItems = append(filteredItems, item)
 		}
 	}

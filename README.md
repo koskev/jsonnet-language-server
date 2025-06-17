@@ -51,29 +51,48 @@ Master is (probably) always somehow broken or not tested on a complex codebase. 
 
 ### LSP Config parameter
 
-#### inlay_config
-| Key    | type | description |
-| -------- | ------- | ------- |
-| enable_debug_ast | bool    | Enables debug ast hints |
-| enable_index_value | bool     | Resolves some index values |
-| enable_function_args    | bool    | Shows the names of unnamed parameters in functions |
-| enable_semantic_tokens    | bool    | Enables semantic tokens |
-| use_type_in_detail    | bool    | Puts the target type in the `detail` field. Try this if you don't see any type info |
+```jsonnet
+{
+  inlay: {
+    enable_debug_ast: false,  // Enables debug ast hints
+    enable_index_value: false,  // Resolves some index values
+    enable_function_args: false,  // Shows the names of unnamed parameters in functions
+    enable_semantic_tokens: false,  // Enables semantic tokens
+    max_length: 120,  // Max length of inlay hints
+  },
+  log_level: 'error',  // The log level to use (logrus format)
+  resolve_paths_with_tanka: false,  // Use Tanka to resolve paths
+  jpath: [],  // String array with jpaths to add. Defaults to the environment variable "JSONNET_PATH"
+  ext_vars: {},  // String map of ext_vars to use. Key is the name of the var
+  ext_code: {},  // Same as ext_vars but for extCode
+  formatting: {},  // Formatting options to use
 
-#### workarounds
-| Key    | type | description |
-| -------- | ------- | ------- |
-| assume_true_condition_on_error | bool    | Assumes all conditions to be true if they run into an error (currently not all conditions are supported) |
+  enable_semantic_tokens: false,  // Enables semantic token support
 
-#### ext_code_config
-| Key    | type | description |
-| -------- | ------- | ------- |
-| find_upwards | bool    | Find all <name>.extcode.jsonnet files upwards until the root directory using as extcode with name=content as extCode (unsupported on Windows) |
+  workarounds: {
+    assume_true_condition_on_error: false,  // Assumes all conditions to be true if they run into an error (since currently not all conditions are supported)
+  },
 
-#### completion
-| Key    | type | description |
-| -------- | ------- | ------- |
-| enable_snippets | bool    | Enable support for snippets. These are still broken in a bunch of cases. E.g. this allows to complete `array.length` which resolves to `std.length(array)` |
+  completion: {
+    show_docstring: false,  // Show documentation in completion (fields beginning with #)
+    enable_snippets: false,  // Enable support for snippets. These are still broken in a bunch of cases. E.g. this allows to complete `array.length` which resolves to `std.length(array)`
+    use_type_in_detail: false,  // Puts the target type in the `detail` field. Try this if you don't see any type info
+  },
+
+  diagnostics: {
+    enable_eval_diagnostics: false,  // Enable evaluation diagnostics
+    enable_lint_diagnostics: false,  // Enable linting diagnostics
+  },
+
+  paths: {
+    relative_jpaths: [],  // A list of folders relative to all workspaces to add the the jpath
+    ext_code: {
+      find_upwards: false,  // Find all <name>.extcode.jsonnet files upwards until the root directory using as extcode with name=content as extCode (unsupported on Windows)
+    },
+  },
+}
+```
+
 
 ### New features
 

@@ -50,6 +50,7 @@ type Server struct {
 	cache     *cache.Cache
 	client    protocol.ClientCloser
 
+	initParams         *protocol.ParamInitialize
 	configuration      config.Configuration
 	clientCapabilities protocol.ClientCapabilities
 
@@ -196,6 +197,7 @@ func (s *Server) DidClose(_ context.Context, params *protocol.DidCloseTextDocume
 
 func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize) (*protocol.InitializeResult, error) {
 	log.Infof("Initializing %s version %s", s.name, s.version)
+	s.initParams = params
 
 	s.diagnosticsLoop()
 	// TODO: this is probably not a JPath

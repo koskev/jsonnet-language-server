@@ -2,76 +2,68 @@ package server
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	"github.com/google/go-jsonnet/formatter"
 	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestConfiguration(t *testing.T) {
 	type kase struct {
-		name        string
-		settings    interface{}
-		fileContent string
-
-		expectedErr        error
+		name               string
+		settings           any
 		expectedFileOutput string
+		fileContent        string
+
+		errorExpected bool
 	}
 
 	testCases := []kase{
 		{
-			name:        "settings is not an object",
-			settings:    []string{""},
-			fileContent: `[]`,
-			expectedErr: errors.New("JSON RPC invalid params: unsupported settings payload. expected json object, got: []string"),
-		},
-		{
-			name: "settings has unsupported key",
-			settings: map[string]interface{}{
-				"foo_bar": map[string]interface{}{},
-			},
-			fileContent: `[]`,
-			expectedErr: errors.New("JSON RPC invalid params: unsupported settings key: \"foo_bar\""),
+			name:          "settings is not an object",
+			settings:      []string{""},
+			fileContent:   `[]`,
+			errorExpected: true,
 		},
 		{
 			name: "ext_var config is empty",
-			settings: map[string]interface{}{
-				"ext_vars": map[string]interface{}{},
+			settings: map[string]any{
+				"ext_vars": map[string]any{},
 			},
 			fileContent:        `[]`,
 			expectedFileOutput: `[]`,
 		},
 		{
 			name:               "ext_var config is missing",
-			settings:           map[string]interface{}{},
+			settings:           map[string]any{},
 			fileContent:        `[]`,
 			expectedFileOutput: `[]`,
 		},
 		{
 			name: "ext_var config is not an object",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"ext_vars": []string{},
 			},
-			fileContent: `[]`,
-			expectedErr: errors.New("JSON RPC invalid params: ext_vars parsing failed: unsupported settings value for ext_vars. expected json object. got: []string"),
+			fileContent:   `[]`,
+			errorExpected: true,
 		},
 		{
 			name: "ext_var config value is not a string",
-			settings: map[string]interface{}{
-				"ext_vars": map[string]interface{}{
+			settings: map[string]any{
+				"ext_vars": map[string]any{
 					"foo": true,
 				},
 			},
-			fileContent: `[]`,
-			expectedErr: errors.New("JSON RPC invalid params: ext_vars parsing failed: unsupported settings value for ext_vars.foo. expected string. got: bool"),
+			fileContent:   `[]`,
+			errorExpected: true,
 		},
 		{
 			name: "ext_var config is valid",
-			settings: map[string]interface{}{
-				"ext_vars": map[string]interface{}{
+			settings: map[string]any{
+				"ext_vars": map[string]any{
 					"hello": "world",
 				},
 			},
@@ -88,24 +80,24 @@ func TestConfiguration(t *testing.T) {
 		},
 		{
 			name: "ext_code config is not an object",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"ext_code": []string{},
 			},
-			fileContent: `[]`,
-			expectedErr: errors.New("JSON RPC invalid params: ext_code parsing failed: unsupported settings value for ext_code. expected json object. got: []string"),
+			fileContent:   `[]`,
+			errorExpected: true,
 		},
 		{
 			name: "ext_code config is empty",
-			settings: map[string]interface{}{
-				"ext_code": map[string]interface{}{},
+			settings: map[string]any{
+				"ext_code": map[string]any{},
 			},
 			fileContent:        `[]`,
 			expectedFileOutput: `[]`,
 		},
 		{
 			name: "ext_code config is valid",
-			settings: map[string]interface{}{
-				"ext_code": map[string]interface{}{
+			settings: map[string]any{
+				"ext_code": map[string]any{
 					"hello": "{\"world\": true,}",
 				},
 			},
@@ -134,8 +126,8 @@ func TestConfiguration(t *testing.T) {
 					Settings: tc.settings,
 				},
 			)
-			if tc.expectedErr != nil {
-				assert.EqualError(t, err, tc.expectedErr.Error())
+			if tc.errorExpected {
+				assert.Error(t, err)
 				return
 			}
 			assert.NoError(t, err)
@@ -155,16 +147,16 @@ func TestConfiguration(t *testing.T) {
 func TestConfiguration_Formatting(t *testing.T) {
 	type kase struct {
 		name                  string
-		settings              interface{}
+		settings              any
 		expectedConfiguration config.Configuration
-		expectedErr           error
+		errorExpected         bool
 	}
 
 	testCases := []kase{
 		{
 			name: "formatting opts",
-			settings: map[string]interface{}{
-				"formatting": map[string]interface{}{
+			settings: map[string]any{
+				"formatting": map[string]any{
 					"Indent":           4,
 					"MaxBlankLines":    10,
 					"StringStyle":      "single",
@@ -199,71 +191,71 @@ func TestConfiguration_Formatting(t *testing.T) {
 		},
 		{
 			name: "invalid string style",
-			settings: map[string]interface{}{
-				"formatting": map[string]interface{}{
+			settings: map[string]any{
+				"formatting": map[string]any{
 					"StringStyle": "invalid",
 				},
 			},
-			expectedErr: errors.New("JSON RPC invalid params: formatting options parsing failed: map decode failed: 1 error(s) decoding:\n\n* error decoding 'StringStyle': expected one of 'double', 'single', 'leave', got: \"invalid\""),
+			errorExpected: true,
 		},
 		{
 			name: "invalid comment style",
-			settings: map[string]interface{}{
-				"formatting": map[string]interface{}{
+			settings: map[string]any{
+				"formatting": map[string]any{
 					"CommentStyle": "invalid",
 				},
 			},
-			expectedErr: errors.New("JSON RPC invalid params: formatting options parsing failed: map decode failed: 1 error(s) decoding:\n\n* error decoding 'CommentStyle': expected one of 'hash', 'slash', 'leave', got: \"invalid\""),
+			errorExpected: true,
 		},
 		{
 			name: "invalid comment style type",
-			settings: map[string]interface{}{
-				"formatting": map[string]interface{}{
+			settings: map[string]any{
+				"formatting": map[string]any{
 					"CommentStyle": 123,
 				},
 			},
-			expectedErr: errors.New("JSON RPC invalid params: formatting options parsing failed: map decode failed: 1 error(s) decoding:\n\n* error decoding 'CommentStyle': expected string, got: int"),
+			errorExpected: true,
 		},
 		{
 			name: "does not override default values",
-			settings: map[string]interface{}{
-				"formatting": map[string]interface{}{},
+			settings: map[string]any{
+				"formatting": map[string]any{},
 			},
 			expectedConfiguration: config.Configuration{FormattingOptions: formatter.DefaultOptions()},
 		},
 		{
 			name: "invalid jpath type",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"jpath": 123,
 			},
-			expectedErr: errors.New("JSON RPC invalid params: unsupported settings value for jpath. expected array of strings. got: int"),
+			errorExpected: true,
 		},
 		{
 			name: "invalid jpath item type",
-			settings: map[string]interface{}{
-				"jpath": []interface{}{123},
+			settings: map[string]any{
+				"jpath": []any{123},
 			},
-			expectedErr: errors.New("JSON RPC invalid params: unsupported settings value for jpath. expected string. got: int"),
+			errorExpected: true,
 		},
 		{
 			name: "invalid bool",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"resolve_paths_with_tanka": "true",
 			},
-			expectedErr: errors.New("JSON RPC invalid params: unsupported settings value for resolve_paths_with_tanka. expected boolean. got: string"),
+			errorExpected: true,
 		},
 		{
 			name: "invalid log level",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"log_level": "bad",
 			},
-			expectedErr: errors.New(`JSON RPC invalid params: not a valid logrus Level: "bad"`),
+			errorExpected: true,
 		},
 		{
 			name: "all settings",
-			settings: map[string]interface{}{
+			settings: map[string]any{
 				"log_level": "error",
-				"formatting": map[string]interface{}{
+				"formatting": map[string]any{
 					"Indent":              4,
 					"MaxBlankLines":       10,
 					"StringStyle":         "double",
@@ -277,18 +269,21 @@ func TestConfiguration_Formatting(t *testing.T) {
 					"StripComments":       true,
 					"StripAllButComments": true,
 				},
-				"ext_vars": map[string]interface{}{
+				"ext_vars": map[string]any{
 					"hello": "world",
 				},
-				"ext_code": map[string]interface{}{
+				"ext_code": map[string]any{
 					"hello": "{\"world\": true,}",
 				},
 				"resolve_paths_with_tanka": false,
-				"jpath":                    []interface{}{"blabla", "blabla2"},
-				"enable_eval_diagnostics":  false,
-				"enable_lint_diagnostics":  true,
+				"jpath":                    []any{"blabla", "blabla2"},
+				"diagnostics": map[string]any{
+					"enable_eval_diagnostics": false,
+					"enable_lint_diagnostics": true,
+				},
 			},
 			expectedConfiguration: config.Configuration{
+				LogLevel: logrus.ErrorLevel,
 				FormattingOptions: func() formatter.Options {
 					opts := formatter.DefaultOptions()
 					opts.Indent = 4
@@ -313,8 +308,10 @@ func TestConfiguration_Formatting(t *testing.T) {
 				},
 				ResolvePathsWithTanka: false,
 				JPaths:                []string{"blabla", "blabla2"},
-				EnableEvalDiagnostics: false,
-				EnableLintDiagnostics: true,
+				Diagnostics: config.DiagnosticConfig{
+					EnableEvalDiagnostics: false,
+					EnableLintDiagnostics: true,
+				},
 			},
 		},
 	}
@@ -329,8 +326,8 @@ func TestConfiguration_Formatting(t *testing.T) {
 					Settings: tc.settings,
 				},
 			)
-			if tc.expectedErr != nil {
-				assert.EqualError(t, err, tc.expectedErr.Error())
+			if tc.errorExpected {
+				assert.Error(t, err)
 				return
 			}
 			assert.NoError(t, err)

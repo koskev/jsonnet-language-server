@@ -55,11 +55,12 @@ Environment variables:
 }
 
 func main() {
-	config := config.Configuration{
-		JPaths:                    filepath.SplitList(os.Getenv("JSONNET_PATH")),
-		FormattingOptions:         formatter.DefaultOptions(),
-		ShowDocstringInCompletion: false,
-		MaxInlayLength:            120,
+	serverConfig := config.Configuration{
+		JPaths:            filepath.SplitList(os.Getenv("JSONNET_PATH")),
+		FormattingOptions: formatter.DefaultOptions(),
+		Inlay: config.ConfigurationInlay{
+			MaxLength: 120,
+		},
 	}
 	log.SetLevel(log.InfoLevel)
 
@@ -72,9 +73,9 @@ func main() {
 			printVersion(os.Stdout)
 			os.Exit(0)
 		case "-J", "--jpath":
-			config.JPaths = append([]string{getArgValue(i)}, config.JPaths...)
+			serverConfig.JPaths = append([]string{getArgValue(i)}, serverConfig.JPaths...)
 		case "-t", "--tanka":
-			config.ResolvePathsWithTanka = true
+			serverConfig.ResolvePathsWithTanka = true
 		case "-l", "--log-level":
 			logLevel, err := log.ParseLevel(getArgValue(i))
 			if err != nil {
@@ -82,11 +83,11 @@ func main() {
 			}
 			log.SetLevel(logLevel)
 		case "--lint":
-			config.EnableLintDiagnostics = true
+			serverConfig.Diagnostics.EnableLintDiagnostics = true
 		case "--eval-diags":
-			config.EnableEvalDiagnostics = true
+			serverConfig.Diagnostics.EnableEvalDiagnostics = true
 		case "--show-docstrings":
-			config.ShowDocstringInCompletion = true
+			serverConfig.Completion.ShowDocstring = true
 		}
 	}
 
@@ -100,7 +101,7 @@ func main() {
 	conn := jsonrpc2.NewConn(stream)
 	client := protocol.ClientDispatcher(conn)
 
-	s := server.NewServer(name, version, client, config)
+	s := server.NewServer(name, version, client, serverConfig)
 
 	conn.Go(ctx, protocol.Handlers(
 		protocol.ServerHandler(s, jsonrpc2.MethodNotFound)))

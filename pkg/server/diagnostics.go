@@ -106,7 +106,7 @@ func (s *Server) diagnosticsLoop() {
 					}()
 
 					lintChannel := make(chan []protocol.Diagnostic, 1)
-					if s.configuration.EnableLintDiagnostics {
+					if s.configuration.Diagnostics.EnableLintDiagnostics {
 						go func() {
 							lintChannel <- s.getLintDiags(doc)
 						}()
@@ -114,7 +114,7 @@ func (s *Server) diagnosticsLoop() {
 
 					diags = append(diags, <-evalChannel...)
 
-					if s.configuration.EnableLintDiagnostics {
+					if s.configuration.Diagnostics.EnableLintDiagnostics {
 						err = s.client.PublishDiagnostics(context.Background(), &protocol.PublishDiagnosticsParams{
 							URI:         uri,
 							Diagnostics: diags,
@@ -150,7 +150,7 @@ func (s *Server) diagnosticsLoop() {
 }
 
 func (s *Server) getEvalDiags(doc *cache.Document) (diags []protocol.Diagnostic) {
-	if doc.Err == nil && s.configuration.EnableEvalDiagnostics {
+	if doc.Err == nil && s.configuration.Diagnostics.EnableEvalDiagnostics {
 		vm := s.getVM(doc.Item.URI.SpanURI().Filename())
 		doc.Val, doc.Err = vm.EvaluateAnonymousSnippet(doc.Item.URI.SpanURI().Filename(), doc.Item.Text)
 	}
