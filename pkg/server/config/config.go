@@ -130,6 +130,9 @@ func (c *Configuration) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	if c.ExtCode == nil {
+		c.ExtCode = make(map[string]string)
+	}
 	maps.Copy(c.ExtCode, extCode)
 
 	return nil
