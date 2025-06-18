@@ -631,7 +631,14 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		return items
 	}
 
-	items = append(items, s.createSnippets(searchstack, node)...)
+	if s.configuration.Completion.EnableSnippets {
+		doc, err := s.cache.Get(protocol.URIFromPath(node.Loc().FileName))
+		if err != nil {
+			log.Errorf("Could not load file %s: %v", node.Loc().FileName, err)
+		}
+		items = append(items, s.completionProvider.CreateSnippets(searchstack, node, doc.Item.Text)...)
+	}
+
 	switch object := node.(type) {
 	case *ast.DesugaredObject:
 

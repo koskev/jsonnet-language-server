@@ -1,4 +1,4 @@
-package server
+package completion
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 	"github.com/google/go-jsonnet/ast"
 	"github.com/grafana/jsonnet-language-server/pkg/nodestack"
 	position "github.com/grafana/jsonnet-language-server/pkg/position_conversion"
-	"github.com/grafana/jsonnet-language-server/pkg/server/completion"
 	"github.com/grafana/jsonnet-language-server/pkg/stdlib"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	log "github.com/sirupsen/logrus"
@@ -25,8 +24,8 @@ func (s *StdSingleParamSnippet) applyTemplate(node ast.Node, callstack *nodestac
 	firstNode := callstack.Peek()
 	lastNode := callstack.PeekFront()
 
-	beginTextPos := completion.LocationToIndex(firstNode.Loc().Begin, content)
-	endTextPos := completion.LocationToIndex(lastNode.Loc().End, content)
+	beginTextPos := LocationToIndex(firstNode.Loc().Begin, content)
+	endTextPos := LocationToIndex(lastNode.Loc().End, content)
 	callText := content[beginTextPos:endTextPos]
 
 	pos := position.ASTToProtocol(lastNode.Loc().End)
@@ -96,22 +95,12 @@ func (s *StdSingleParamSnippet) applyTemplate(node ast.Node, callstack *nodestac
 	return items
 }
 
-func (s *Server) createSnippets(searchstack *nodestack.NodeStack, node ast.Node) []protocol.CompletionItem {
-	items := []protocol.CompletionItem{}
-	if s.configuration.Completion.EnableSnippets {
-		callstack := completion.BuildCallStack(searchstack)
+func (c *Completion) CreateSnippets(searchstack *nodestack.NodeStack, node ast.Node, content string) []protocol.CompletionItem {
+	callstack := BuildCallStack(searchstack)
 
-		doc, err := s.cache.Get(protocol.URIFromPath(node.Loc().FileName))
-		if err != nil {
-			log.Errorf("Could not get document: %v", err)
-			return items
-		}
-
-		stdSnippets := StdSingleParamSnippet{
-			stdFunctions: &s.stdlibMap,
-		}
-
-		items = append(items, stdSnippets.applyTemplate(node, callstack, doc.Item.Text)...)
+	stdSnippets := StdSingleParamSnippet{
+		stdFunctions: c.stdLib,
 	}
-	return items
+
+	return stdSnippets.applyTemplate(node, callstack, content)
 }
