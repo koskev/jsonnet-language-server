@@ -71,6 +71,10 @@ func TestConfig(t *testing.T) {
 			}
 
 			assert.NoError(t, err)
+			// FUCK YOU GO AND YOUR MISSING FEATURES!!
+			if tc.expectedConfig.ExtCode == nil {
+				tc.expectedConfig.ExtCode = make(map[string]string)
+			}
 			// GO is an awesome language that does not have defaults....
 			if !tc.changedFormatterOptions {
 				tc.expectedConfig.FormattingOptions, err = parseFormattingOpts(map[string]any{})

@@ -332,6 +332,11 @@ func TestConfiguration_Formatting(t *testing.T) {
 			}
 			assert.NoError(t, err)
 
+			// FUCK YOU GO AND YOUR MISSING FEATURES!!
+			if tc.expectedConfiguration.ExtCode == nil {
+				tc.expectedConfiguration.ExtCode = make(map[string]string)
+			}
+
 			assert.Equal(t, tc.expectedConfiguration, s.configuration)
 		})
 	}
