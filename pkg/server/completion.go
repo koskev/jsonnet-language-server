@@ -635,8 +635,9 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		doc, err := s.cache.Get(protocol.URIFromPath(node.Loc().FileName))
 		if err != nil {
 			log.Errorf("Could not load file %s: %v", node.Loc().FileName, err)
+		} else {
+			items = append(items, s.completionProvider.CreateSnippets(searchstack, node, doc.Item.Text)...)
 		}
-		items = append(items, s.completionProvider.CreateSnippets(searchstack, node, doc.Item.Text)...)
 	}
 
 	switch object := node.(type) {

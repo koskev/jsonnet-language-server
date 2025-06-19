@@ -21,57 +21,79 @@ import (
 var extCodeSuffix = ".extcode.jsonnet"
 
 type InlayFunctionArgs struct {
+	// Show inlay hints for parameters even if the names are the same
 	ShowWithSameName bool `json:"show_with_same_name"`
 }
 
 type ConfigurationInlay struct {
 	// Of course go does neither support options nor default values...
 	// So since go is a stupid language and I don't want to hack proper defaults in they are just all false by default
-	EnableDebugAst     bool `json:"enable_debug_ast"`
-	EnableIndexValue   bool `json:"enable_index_value"`
+
+	// Enables debug ast hints
+	EnableDebugAst bool `json:"enable_debug_ast"`
+	// Resolves some index values
+	EnableIndexValue bool `json:"enable_index_value"`
+	// Shows the names of unnamed parameters in functions
 	EnableFunctionArgs bool `json:"enable_function_args"`
 
 	FunctionArgs InlayFunctionArgs `json:"function_args"`
 
+	// Max length of inlay hints
 	MaxLength int `json:"max_length"`
 }
 
 type WorkaroundConfig struct {
+	// Assumes all conditions to be true if they run into an error (since currently not all conditions are supported)
 	AssumeTrueConditionOnError bool `json:"assume_true_condition_on_error"`
 }
 
 type ExtCodeConfig struct {
+	// Find all <name>.extcode.jsonnet files upwards until the root directory using as extcode with name=content as extCode (unsupported on Windows)
 	FindUpwards bool `json:"find_upwards"`
 }
 
 type CompletionConfig struct {
-	EnableSnippets  bool `json:"enable_snippets"`
-	EnableKeywords  bool `json:"enable_keywords"`
+	// Enable support for snippets. These are still broken in a bunch of cases. E.g. this allows to complete `array.length` which resolves to `std.length(array)`
+	EnableSnippets bool `json:"enable_snippets"`
+	// Enable support for completing keywords. e.g. self, super, local etc.
+	EnableKeywords bool `json:"enable_keywords"`
+	// Puts the target type in the `detail` field. Try this if you don't see any type info
 	UseTypeInDetail bool `json:"use_type_in_detail"`
-	ShowDocstring   bool `json:"show_docstring"`
+	// Show documentation in completion (fields beginning with #)
+	ShowDocstring bool `json:"show_docstring"`
 }
 
 type PathConfig struct {
-	ExtCode        ExtCodeConfig `json:"ext_code"`
-	RelativeJPaths []string      `json:"relative_jpaths"`
+	ExtCode ExtCodeConfig `json:"ext_code"`
+	// A list of folders relative to all workspaces to add the the jpath
+	RelativeJPaths []string `json:"relative_jpaths"`
 }
 
 type DiagnosticConfig struct {
+	// Enable evaluation diagnostics
 	EnableEvalDiagnostics bool `json:"enable_eval_diagnostics"`
+	// Enable linting diagnostics
 	EnableLintDiagnostics bool `json:"enable_lint_diagnostics"`
 }
 
 type Configuration struct {
-	LogLevel              log.Level         `jsoin:"log_level"`
-	ResolvePathsWithTanka bool              `json:"resolve_paths_with_tanka"`
-	JPaths                []string          `json:"jpath"`
-	ExtVars               map[string]string `json:"ext_vars"`
-	ExtCode               map[string]string `json:"ext_code"`
-	FormattingOptions     formatter.Options `json:"formatting"`
-	Diagnostics           DiagnosticConfig  `json:"diagnostics"`
+	// The log level to use (logrus format)
+	LogLevel log.Level `json:"log_level"`
+	// Use Tanka to resolve paths
+	ResolvePathsWithTanka bool `json:"resolve_paths_with_tanka"`
+	// String array with jpaths to add. Defaults to the environment variable "JSONNET_PATH"
+	JPaths []string `json:"jpath"`
+	// String map of ext_vars to use. Key is the name of the var
+	ExtVars map[string]string `json:"ext_vars"`
+	// Same as ext_vars but for extCode
+	ExtCode map[string]string `json:"ext_code"`
+	// Formatting options to use
+	FormattingOptions formatter.Options `json:"formatting"`
+	Diagnostics       DiagnosticConfig  `json:"diagnostics"`
 
 	Inlay ConfigurationInlay `json:"inlay"`
 
+	// Enables semantic tokens
 	EnableSemanticTokens bool `json:"enable_semantic_tokens"`
 
 	Workarounds WorkaroundConfig `json:"workarounds"`
@@ -82,6 +104,7 @@ type Configuration struct {
 }
 
 func NewDefaultConfiguration() *Configuration {
+	// TODO: Since (the json implementation of) go is incomplete, we need to properly define defaults for the config. Maybe hijack the schema?
 	return &Configuration{
 		JPaths:            filepath.SplitList(os.Getenv("JSONNET_PATH")),
 		FormattingOptions: formatter.DefaultOptions(),

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"github.com/grafana/jsonnet-language-server/pkg/server"
 	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
+	"github.com/invopop/jsonschema"
 	"github.com/jdbaldry/go-language-server-protocol/jsonrpc2"
 	"github.com/jdbaldry/go-language-server-protocol/lsp/protocol"
 	log "github.com/sirupsen/logrus"
@@ -42,6 +44,7 @@ Options:
   --eval-diags       Try to evaluate files to find errors and warnings.
   --lint             Enable linting.
   -v / --version     Print version.
+  --generate-config-schema Generates the config schema and example
 
 Environment variables:
   JSONNET_PATH is a %[2]q separated list of directories
@@ -81,6 +84,13 @@ func main() {
 			serverConfig.Diagnostics.EnableEvalDiagnostics = true
 		case "--show-docstrings":
 			serverConfig.Completion.ShowDocstring = true
+		case "--generate-config-schema":
+			err := generateSchemaAndDefaultConfig()
+			if err != nil {
+				log.Errorf("Could not generate schema and default config: %v", err)
+				os.Exit(1)
+			}
+			os.Exit(0)
 		}
 	}
 
@@ -110,4 +120,32 @@ func getArgValue(i int) string {
 		log.Fatalf("Expected value for option %s but found none.", os.Args[i])
 	}
 	return os.Args[i+1]
+}
+
+func generateSchemaAndDefaultConfig() error {
+	r := jsonschema.Reflector{
+		RequiredFromJSONSchemaTags: true,
+	}
+	if err := r.AddGoComments("github.com/grafana/jsonnet-language-server", "./"); err != nil {
+		return fmt.Errorf("extracting comments: %w", err)
+	}
+	schema := r.Reflect(config.Configuration{})
+
+	jsonSchema, err := json.Marshal(schema)
+	if err != nil {
+		return fmt.Errorf("marshalling json: %w", err)
+	}
+	err = os.WriteFile("schema.json", jsonSchema, 0644)
+	if err != nil {
+		return fmt.Errorf("writing schema: %w", err)
+	}
+	exampleConfig, err := json.MarshalIndent(config.NewDefaultConfiguration(), "", "  ")
+	if err != nil {
+		return fmt.Errorf("generating example config: %w", err)
+	}
+	err = os.WriteFile("example.json", exampleConfig, 0644)
+	if err != nil {
+		return fmt.Errorf("writing example config: %w", err)
+	}
+	return nil
 }
