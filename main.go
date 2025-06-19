@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/google/go-jsonnet/formatter"
 	"github.com/grafana/jsonnet-language-server/pkg/server"
 	"github.com/grafana/jsonnet-language-server/pkg/server/config"
 	"github.com/grafana/jsonnet-language-server/pkg/utils"
@@ -55,13 +54,7 @@ Environment variables:
 }
 
 func main() {
-	serverConfig := config.Configuration{
-		JPaths:            filepath.SplitList(os.Getenv("JSONNET_PATH")),
-		FormattingOptions: formatter.DefaultOptions(),
-		Inlay: config.ConfigurationInlay{
-			MaxLength: 120,
-		},
-	}
+	serverConfig := config.NewDefaultConfiguration()
 	log.SetLevel(log.InfoLevel)
 
 	for i, arg := range os.Args {
@@ -101,7 +94,7 @@ func main() {
 	conn := jsonrpc2.NewConn(stream)
 	client := protocol.ClientDispatcher(conn)
 
-	s := server.NewServer(name, version, client, serverConfig)
+	s := server.NewServer(name, version, client, *serverConfig)
 
 	conn.Go(ctx, protocol.Handlers(
 		protocol.ServerHandler(s, jsonrpc2.MethodNotFound)))

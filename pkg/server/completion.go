@@ -232,7 +232,7 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 			log.Debugf("next search %v", reflect.TypeOf(callstack.Peek()))
 			switch currentNode.Id {
 			case "$":
-				// XXX: Dollar is a node and not ast.Dollar. For whatever reason
+				// XXX: Dollar is a var and not ast.Dollar. For whatever reason
 				searchstack.Push(&ast.Dollar{NodeBase: currentNode.NodeBase})
 			default:
 				ref := processing.FindNodeByID(documentstack, currentNode.Id)
@@ -795,11 +795,14 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 		}
 		for _, bind := range binds {
 			label := string(bind.Variable)
+			// TODO: filter shadowed bindings
 			items = append(items, s.completionProvider.CreateCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
 		}
 	}
 
-	items = append(items, s.completionProvider.CompleteKeywords(stack, pos)...)
+	if s.configuration.Completion.EnableKeywords {
+		items = append(items, s.completionProvider.CompleteKeywords(stack, pos)...)
+	}
 
 	filteredItems := []protocol.CompletionItem{}
 	for _, item := range items {

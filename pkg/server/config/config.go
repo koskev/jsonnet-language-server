@@ -46,6 +46,7 @@ type ExtCodeConfig struct {
 
 type CompletionConfig struct {
 	EnableSnippets  bool `json:"enable_snippets"`
+	EnableKeywords  bool `json:"enable_keywords"`
 	UseTypeInDetail bool `json:"use_type_in_detail"`
 	ShowDocstring   bool `json:"show_docstring"`
 }
@@ -78,6 +79,19 @@ type Configuration struct {
 	Completion CompletionConfig `json:"completion"`
 
 	workspaces []protocol.WorkspaceFolder
+}
+
+func NewDefaultConfiguration() *Configuration {
+	return &Configuration{
+		JPaths:            filepath.SplitList(os.Getenv("JSONNET_PATH")),
+		FormattingOptions: formatter.DefaultOptions(),
+		Inlay: ConfigurationInlay{
+			MaxLength: 120,
+		},
+		Completion: CompletionConfig{
+			EnableKeywords: true,
+		},
+	}
 }
 
 func NewConfiguration(data any, workspaces []protocol.WorkspaceFolder) (*Configuration, error) {

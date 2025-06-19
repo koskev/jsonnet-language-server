@@ -271,30 +271,6 @@ func TestCompletion(t *testing.T) {
 							Description: "string",
 						},
 					},
-					{
-						Label:      "self",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "self",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "self",
-						},
-					},
-					{
-						Label:      "super",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "super",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "super",
-						},
-					},
-					{
-						Label:      "local",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "local",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "local",
-						},
-					},
 				},
 			},
 		},
@@ -1168,14 +1144,6 @@ func TestCompletion(t *testing.T) {
 							Description: "object",
 						},
 					},
-					{
-						Label:      "local",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "local",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "local",
-						},
-					},
 				},
 			},
 		},
@@ -1201,14 +1169,6 @@ func TestCompletion(t *testing.T) {
 						InsertText: "var",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "object",
-						},
-					},
-					{
-						Label:      "local",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "local",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "local",
 						},
 					},
 				},
@@ -1423,64 +1383,6 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
-			name:            "self global outside of object",
-			filename:        "./testdata/complete/keywords/self.jsonnet",
-			replaceString:   "local myVar = 5;",
-			replaceByString: "local myVar = s",
-			expected: protocol.CompletionList{
-				IsIncomplete: false,
-				Items:        []protocol.CompletionItem{},
-			},
-		},
-		{
-			name:            "self global inside of object",
-			filename:        "./testdata/complete/keywords/self.jsonnet",
-			replaceString:   "keyA: 4",
-			replaceByString: "keyA: s",
-			expected: protocol.CompletionList{
-				IsIncomplete: false,
-				Items: []protocol.CompletionItem{
-					{
-						Label:      "self",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "self",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "self",
-						},
-					},
-				},
-			},
-		},
-		{
-			name:            "super global without base",
-			filename:        "./testdata/complete/keywords/self.jsonnet",
-			replaceString:   "keyA: 4",
-			replaceByString: "keyA: su",
-			expected: protocol.CompletionList{
-				IsIncomplete: false,
-				Items:        []protocol.CompletionItem{},
-			},
-		},
-		{
-			name:            "super global with base",
-			filename:        "./testdata/complete/keywords/super.jsonnet",
-			replaceString:   "keyA: 4",
-			replaceByString: "keyA: su",
-			expected: protocol.CompletionList{
-				IsIncomplete: false,
-				Items: []protocol.CompletionItem{
-					{
-						Label:      "super",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "super",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "super",
-						},
-					},
-				},
-			},
-		},
-		{
 			name:            "super object",
 			filename:        "./testdata/complete/selfbinary.jsonnet",
 			replaceString:   "thirdObj:: 3,",
@@ -1582,22 +1484,6 @@ func TestCompletion(t *testing.T) {
 						InsertText: "outerSelf",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "self",
-						},
-					},
-					{
-						Label:      "self",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "self",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "self",
-						},
-					},
-					{
-						Label:      "local",
-						Kind:       protocol.FieldCompletion,
-						InsertText: "local",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "local",
 						},
 					},
 				},
@@ -2288,19 +2174,89 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 	}
+	var keywordTestCases = []completionCase{
+		{
+			name:            "self global outside of object",
+			filename:        "./testdata/complete/keywords/self.jsonnet",
+			replaceString:   "local myVar = 5;",
+			replaceByString: "local myVar = s",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items:        []protocol.CompletionItem{},
+			},
+		},
+		{
+			name:            "self global inside of object",
+			filename:        "./testdata/complete/keywords/self.jsonnet",
+			replaceString:   "keyA: 4",
+			replaceByString: "keyA: s",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "self",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "self",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "self",
+						},
+					},
+				},
+			},
+		},
+		{
+			name:            "super global without base",
+			filename:        "./testdata/complete/keywords/self.jsonnet",
+			replaceString:   "keyA: 4",
+			replaceByString: "keyA: su",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items:        []protocol.CompletionItem{},
+			},
+		},
+		{
+			name:            "super global with base",
+			filename:        "./testdata/complete/keywords/super.jsonnet",
+			replaceString:   "keyA: 4",
+			replaceByString: "keyA: su",
+			expected: protocol.CompletionList{
+				IsIncomplete: false,
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "super",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "super",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "super",
+						},
+					},
+				},
+			},
+		},
+	}
+	completionConfig := config.Configuration{
+		JPaths: []string{"testdata", "testdata/complete", "testdata/complete/import"},
+		ExtCode: map[string]string{
+			"code": "{ objA: 5, ['%s' % 'computed']: 3}",
+		},
+		Workarounds: config.WorkaroundConfig{
+			AssumeTrueConditionOnError: true,
+		},
+	}
+	testCompletion(t, &completionConfig, testCases)
+
+	completionConfig.Completion.EnableKeywords = true
+	testCompletion(t, &completionConfig, keywordTestCases)
+}
+
+func testCompletion(t *testing.T, config *config.Configuration, testCases []completionCase) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			content, err := os.ReadFile(tc.filename)
 			require.NoError(t, err)
 
 			server, fileURI := testServerWithFile(t, completionTestStdlib, string(content))
-			server.configuration.JPaths = []string{"testdata", "testdata/complete", "testdata/complete/import"}
-			server.configuration.ExtCode = map[string]string{
-				"code": "{ objA: 5, ['%s' % 'computed']: 3}",
-			}
-			server.configuration.Workarounds = config.WorkaroundConfig{
-				AssumeTrueConditionOnError: true,
-			}
+			server.configuration = *config
 			var version int32 = 2
 
 			replacedContent := strings.ReplaceAll(string(content), tc.replaceString, tc.replaceByString)
