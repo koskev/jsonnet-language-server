@@ -21,21 +21,7 @@ func BuildCallStack(documentstack *nodestack.NodeStack) *nodestack.NodeStack {
 		switch currentNode := currentNode.(type) {
 		case *ast.Index:
 			log.Tracef("INDEX TARGET %v", reflect.TypeOf(currentNode.Target))
-			swapNode := false
-			if prevApply, ok := callStack.Peek().(*ast.Apply); ok {
-				if prevApply.Target == currentNode {
-					// If the apply is the current target, we need to swap the order. This way the apply binds get added before the index for the function
-					log.Tracef("REMOVING PREV with target %v", reflect.TypeOf(currentNode.Target))
-					swapNode = false
-				}
-			}
-			if swapNode {
-				tmp := callStack.Pop()
-				callStack.Push(currentNode)
-				callStack.Push(tmp)
-			} else {
-				callStack.Push(currentNode)
-			}
+			callStack.Push(currentNode)
 			nodesToSearch.Push(currentNode.Target)
 			log.Tracef("New target %v %v", reflect.TypeOf(currentNode.Target), currentNode.Index)
 		case *ast.Var:
@@ -58,7 +44,10 @@ func BuildCallStack(documentstack *nodestack.NodeStack) *nodestack.NodeStack {
 			// If callstack top is an index to the same node we'll delete it
 			log.Tracef("TARGET %v", reflect.TypeOf(currentNode.Target))
 			callStack.Push(currentNode)
-			nodesToSearch.Push(currentNode.Target)
+			// If apply target is an index we need to add it to the search stack
+			if _, ok := currentNode.Target.(*ast.Index); ok {
+				nodesToSearch.Push(currentNode.Target)
+			}
 		default:
 			callStack.Push(currentNode)
 		}
