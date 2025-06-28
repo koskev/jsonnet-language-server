@@ -106,6 +106,7 @@ type Configuration struct {
 func NewDefaultConfiguration() *Configuration {
 	// TODO: Since (the json implementation of) go is incomplete, we need to properly define defaults for the config. Maybe hijack the schema?
 	return &Configuration{
+		LogLevel:          log.ErrorLevel,
 		JPaths:            filepath.SplitList(os.Getenv("JSONNET_PATH")),
 		FormattingOptions: formatter.DefaultOptions(),
 		Inlay: ConfigurationInlay{

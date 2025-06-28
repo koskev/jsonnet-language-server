@@ -19,6 +19,7 @@ func (s *Server) DidChangeConfiguration(_ context.Context, params *protocol.DidC
 	}
 
 	log.SetLevel(settings.LogLevel)
+	log.SetLevel(log.ErrorLevel)
 	s.configuration = *settings
 
 	log.Infof("configuration updated: %+v", s.configuration)
