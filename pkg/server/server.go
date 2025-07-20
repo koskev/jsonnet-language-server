@@ -228,7 +228,11 @@ func (s *Server) Initialize(_ context.Context, params *protocol.ParamInitialize)
 			DocumentFormattingProvider: true,
 			DocumentSymbolProvider:     true,
 			ReferencesProvider:         true,
-			ExecuteCommandProvider:     protocol.ExecuteCommandOptions{Commands: []string{}},
+			ExecuteCommandProvider: protocol.ExecuteCommandOptions{Commands: []string{
+				"jsonnet.evalItem",
+				"jsonnet.evalFile",
+				"jsonnet.evalExpression",
+			}},
 			TextDocumentSync: &protocol.TextDocumentSyncOptions{
 				Change:    protocol.Full,
 				OpenClose: true,
