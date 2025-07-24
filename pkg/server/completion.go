@@ -43,7 +43,6 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 	}
 
 	info, err := cst.FindCompletionNode(context.Background(), doc.Item.Text, params.Position)
-
 	if err != nil {
 		log.Errorf("Unable to find completion node: %v", err)
 		return nil, err
@@ -51,7 +50,8 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 
 	switch info.CompletionType {
 	case cst.CompleteGlobal:
-		searchStack, err := processing.FindNodeByPositionForReference(doc.AST, position.ProtocolToAST(params.Position))
+		searchStack, err := processing.FindNodeByPositionForReference(doc.AST,
+			position.ProtocolToAST(params.Position))
 		if err != nil {
 			log.Errorf("Unable to find node position: %v", err)
 			return nil, err
@@ -118,7 +118,8 @@ func (s *Server) Completion(_ context.Context, params *protocol.CompletionParams
 	// TODO: get prev sibling -> get first fieldaccess -> get last child
 	// Get prev node to get value to compile and complete from
 	// prevNode := cst.GetPrevNode(found)
-	searchStack, err := processing.FindNodeByPosition(doc.AST, position.CSTToAST(found.StartPosition()))
+	searchStack, err := processing.FindNodeByPosition(doc.AST,
+		position.CSTToAST(found.StartPosition()))
 	if err != nil {
 		return nil, fmt.Errorf("finding ast node %v", err)
 	}
@@ -256,7 +257,8 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				continue
 			}
 			// Search for next DesugaredObject
-			selfObject, pos, err := tempStack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
+			selfObject, pos, err := tempStack.FindNext(
+				reflect.TypeFor[*ast.DesugaredObject]())
 			if err != nil {
 				log.Errorf("Unable to find self object from self: %v", err)
 				continue
@@ -301,7 +303,8 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 				continue
 			}
 			// Search for next DesugaredObject
-			selfObject, pos, err := tempStack.FindNext(reflect.TypeFor[*ast.DesugaredObject]())
+			selfObject, pos, err := tempStack.FindNext(
+				reflect.TypeFor[*ast.DesugaredObject]())
 			if err != nil {
 				log.Errorf("Unable to find self object from super index: %v", err)
 				continue
@@ -435,7 +438,8 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 					Binds: []ast.LocalBind{{
 						Variable: currentNode.Parameters[i].Name,
 						Body:     arg.Expr,
-					}}})
+					}},
+				})
 			}
 			for _, arg := range applyNode.Arguments.Named {
 				log.Tracef("Named argument: %+v", arg)
@@ -443,7 +447,8 @@ func (s *Server) getDesugaredObject(callstack *nodestack.NodeStack, documentstac
 					Binds: []ast.LocalBind{{
 						Variable: arg.Name,
 						Body:     arg.Arg,
-					}}})
+					}},
+				})
 			}
 
 		case *ast.Dollar:
@@ -555,7 +560,8 @@ stackLoop:
 			if !ok {
 				continue
 			}
-			log.Debugf("Finding %s in %s", indexName.Value, utils.DesugaredObjectFieldsToString(baseObject))
+			log.Debugf("Finding %s in %s", indexName.Value,
+				utils.DesugaredObjectFieldsToString(baseObject))
 			// Look at all fields of the desugared object
 			for _, field := range baseObject.Fields {
 				fieldName, ok := field.Name.(*ast.LiteralString)
@@ -583,7 +589,7 @@ stackLoop:
 						newDesugar = s.getDesugaredObject(nodestack.NewNodeStack(field.Body), documentstack)
 					}
 					if newDesugar != nil {
-						//if newDesugar, ok := field.Body.(*ast.DesugaredObject); ok {
+						// if newDesugar, ok := field.Body.(*ast.DesugaredObject); ok {
 						baseObject = newDesugar
 						continue stackLoop
 					}
@@ -652,11 +658,10 @@ func (s *Server) createCompletionItems(searchstack *nodestack.NodeStack, pos pro
 		})
 		for _, field := range object.Fields {
 			if nameNode, ok := field.Name.(*ast.LiteralString); ok {
-				if strings.HasPrefix(nameNode.Value, indexName) {
-					items = append(items,
-						s.completionProvider.CreateCompletionItem(nameNode.Value, "", protocol.VariableCompletion, field.Body, pos, true),
-					)
-				}
+				items = append(items,
+					s.completionProvider.CreateCompletionItem(nameNode.Value, "",
+						protocol.VariableCompletion, field.Body, pos, true),
+				)
 			}
 		}
 	default:
@@ -673,7 +678,8 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 	// Get the function arguments to complete
 	// TODO: create function with stack parameter and pos to find the node?
 	// TODO: Function to resolve apply from var
-	foundNode, err := processing.FindNodeByPositionForReference(stack.PeekFront(), position.CSTToAST(info.FunctionNode.EndPosition()))
+	foundNode, err := processing.FindNodeByPositionForReference(stack.PeekFront(),
+		position.CSTToAST(info.FunctionNode.EndPosition()))
 	if err != nil {
 		log.Errorf("Could not get node for completing function arg names")
 		return items
@@ -763,8 +769,10 @@ func (s *Server) completeFunctionArguments(info *cst.CompletionNodeInfo, stack *
 	for i, param := range functionNode.Parameters {
 		// Skip i unnamed parameters as they are already set
 		// FIXME: if we complete "myFunc(a" a is considered a set argument and won't complete properly
-		if i >= len(applyNode.Arguments.Positional) && !slices.Contains(setNamedArgs, string(param.Name)) {
-			items = append(items, s.completionProvider.CreateCompletionItem(fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
+		if i >= len(applyNode.Arguments.Positional) &&
+			!slices.Contains(setNamedArgs, string(param.Name)) {
+			items = append(items, s.completionProvider.CreateCompletionItem(
+				fmt.Sprintf("%s=", string(param.Name)), "", protocol.VariableCompletion, &ast.Var{}, pos, false))
 		}
 	}
 
@@ -789,7 +797,8 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 			binds = typedCurr.Binds
 		case *ast.Function:
 			for _, param := range typedCurr.Parameters {
-				items = append(items, s.completionProvider.CreateCompletionItem(string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
+				items = append(items, s.completionProvider.CreateCompletionItem(
+					string(param.Name), "", protocol.VariableCompletion, &ast.Var{}, pos, true))
 			}
 		default:
 			break
@@ -797,7 +806,8 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 		for _, bind := range binds {
 			label := string(bind.Variable)
 			// TODO: filter shadowed bindings
-			items = append(items, s.completionProvider.CreateCompletionItem(label, "", protocol.VariableCompletion, bind.Body, pos, true))
+			items = append(items, s.completionProvider.CreateCompletionItem(label, "",
+				protocol.VariableCompletion, bind.Body, pos, true))
 		}
 	}
 
@@ -807,7 +817,8 @@ func (s *Server) completeGlobal(info *cst.CompletionNodeInfo, stack *nodestack.N
 
 	filteredItems := []protocol.CompletionItem{}
 	for _, item := range items {
-		if strings.HasPrefix(item.Label, info.Index) && item.Label != "$" && (!strings.HasPrefix(item.Label, "#") || !s.configuration.Completion.ShowDocstring) {
+		if strings.HasPrefix(item.Label, info.Index) && item.Label != "$" &&
+			(!strings.HasPrefix(item.Label, "#") || !s.configuration.Completion.ShowDocstring) {
 			filteredItems = append(filteredItems, item)
 		}
 	}

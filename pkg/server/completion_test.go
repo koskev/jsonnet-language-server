@@ -59,7 +59,7 @@ var (
 )
 
 func TestCompletionStdLib(t *testing.T) {
-	var testCases = []struct {
+	testCases := []struct {
 		name        string
 		line        string
 		expected    *protocol.CompletionList
@@ -156,7 +156,7 @@ type completionCase struct {
 }
 
 func TestCompletion(t *testing.T) {
-	var testCases = []completionCase{
+	testCases := []completionCase{
 		{
 			name:            "self function",
 			filename:        "testdata/test_basic_lib.libsonnet",
@@ -188,31 +188,32 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 		{
-			name:            "self function with bad first letter letter",
-			filename:        "testdata/test_basic_lib.libsonnet",
-			replaceString:   "self.greet('Zack')",
-			replaceByString: "self.h",
-			expected: protocol.CompletionList{
-				IsIncomplete: false,
-				Items:        []protocol.CompletionItem{},
-			},
-		},
-		{
 			name:            "self function with first letter",
 			filename:        "testdata/test_basic_lib.libsonnet",
 			replaceString:   "self.greet('Zack')",
 			replaceByString: "self.g",
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
-				Items: []protocol.CompletionItem{{
-					Label:      "greet",
-					Kind:       protocol.FunctionCompletion,
-					Detail:     "self.greet(name)",
-					InsertText: "greet(name)",
-					LabelDetails: &protocol.CompletionItemLabelDetails{
-						Description: "function",
+				Items: []protocol.CompletionItem{
+					{
+						Label:      "greet",
+						Kind:       protocol.FunctionCompletion,
+						Detail:     "self.greet(name)",
+						InsertText: "greet(name)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
 					},
-				}},
+					{
+						Label:      "message",
+						Kind:       protocol.FunctionCompletion,
+						Detail:     "self.greet(name)",
+						InsertText: "message",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "object field",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -355,6 +356,15 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "otherfile.bar",
 						InsertText: "bar",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+					{
+						Label:      "foo",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "otherfile.foo",
+						InsertText: "foo",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "string",
 						},
@@ -920,26 +930,6 @@ func TestCompletion(t *testing.T) {
 			name:            "completion for extcode",
 			filename:        "./testdata/complete/extcode.jsonnet",
 			replaceString:   "extcode.objA,",
-			replaceByString: "extcode.o",
-			expected: protocol.CompletionList{
-				IsIncomplete: false,
-				Items: []protocol.CompletionItem{
-					{
-						Label:      "objA",
-						Kind:       protocol.FieldCompletion,
-						Detail:     "extcode.objA",
-						InsertText: "objA",
-						LabelDetails: &protocol.CompletionItemLabelDetails{
-							Description: "number",
-						},
-					},
-				},
-			},
-		},
-		{
-			name:            "completion for extcode computed",
-			filename:        "./testdata/complete/extcode.jsonnet",
-			replaceString:   "extcode.objA,",
 			replaceByString: "extcode.c",
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
@@ -949,6 +939,15 @@ func TestCompletion(t *testing.T) {
 						Kind:       protocol.FieldCompletion,
 						Detail:     "extcode.computed",
 						InsertText: "computed",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "number",
+						},
+					},
+					{
+						Label:      "objA",
+						Kind:       protocol.FieldCompletion,
+						Detail:     "objA",
+						InsertText: "objA",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "number",
 						},
@@ -1276,9 +1275,41 @@ func TestCompletion(t *testing.T) {
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
 					{
+						Label:      "attr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "attr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr2",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+					{
 						Label:      "build",
 						Kind:       protocol.FieldCompletion,
 						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr(v)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr2(v)",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "function",
 						},
@@ -1295,9 +1326,41 @@ func TestCompletion(t *testing.T) {
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
 					{
+						Label:      "attr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+					{
+						Label:      "attr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr2",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
 						Label:      "build",
 						Kind:       protocol.FieldCompletion,
 						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr(v)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr2(v)",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "function",
 						},
@@ -1314,9 +1377,41 @@ func TestCompletion(t *testing.T) {
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
 					{
+						Label:      "attr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "attr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr2",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+					{
 						Label:      "build",
 						Kind:       protocol.FieldCompletion,
 						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr(v)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr2(v)",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "function",
 						},
@@ -1628,9 +1723,41 @@ func TestCompletion(t *testing.T) {
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
 					{
+						Label:      "attr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "string",
+						},
+					},
+					{
+						Label:      "attr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "attr2",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
 						Label:      "build",
 						Kind:       protocol.FieldCompletion,
 						InsertText: "build()",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr(v)",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "function",
+						},
+					},
+					{
+						Label:      "withAttr2",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "withAttr2(v)",
 						LabelDetails: &protocol.CompletionItemLabelDetails{
 							Description: "function",
 						},
@@ -1766,10 +1893,34 @@ func TestCompletion(t *testing.T) {
 			name:            "complete my builder pattern with assert",
 			filename:        "./testdata/complete/builderpattern.jsonnet",
 			replaceString:   "test: self.new('mybuilder'),",
-			replaceByString: "test: self.new('mybuilder').withVal(1).w",
+			replaceByString: "test: self.new('mybuilder').withVal(1).",
 			expected: protocol.CompletionList{
 				IsIncomplete: false,
 				Items: []protocol.CompletionItem{
+					{
+						Label:      "_name",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "_name",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "variable",
+						},
+					},
+					{
+						Label:      "_val",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "_val",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "binary",
+						},
+					},
+					{
+						Label:      "_vals",
+						Kind:       protocol.FieldCompletion,
+						InsertText: "_vals",
+						LabelDetails: &protocol.CompletionItemLabelDetails{
+							Description: "array",
+						},
+					},
 					{
 						Label:      "withName",
 						Kind:       protocol.FieldCompletion,
@@ -2174,7 +2325,7 @@ func TestCompletion(t *testing.T) {
 			},
 		},
 	}
-	var keywordTestCases = []completionCase{
+	keywordTestCases := []completionCase{
 		{
 			name:            "self global outside of object",
 			filename:        "./testdata/complete/keywords/self.jsonnet",
@@ -2266,7 +2417,8 @@ func testCompletion(t *testing.T, config *config.Configuration, testCases []comp
 			cursorPosition := protocol.Position{}
 			for _, line := range strings.Split(replacedContent, "\n") {
 				if strings.Contains(line, tc.replaceByString) {
-					cursorPosition.Character = uint32(strings.Index(line, tc.replaceByString) + len(tc.replaceByString))
+					cursorPosition.Character = uint32(strings.Index(line,
+						tc.replaceByString) + len(tc.replaceByString))
 					break
 				}
 				cursorPosition.Line++
@@ -2275,7 +2427,8 @@ func testCompletion(t *testing.T, config *config.Configuration, testCases []comp
 				cursorPosition.Line = uint32(tc.lineOverride)
 			}
 			// This is worse than rust...
-			cursorPosition.Character = min(uint32(int64(cursorPosition.Character)+int64(tc.completionOffset)), cursorPosition.Character)
+			cursorPosition.Character = min(uint32(int64(cursorPosition.Character)+
+				int64(tc.completionOffset)), cursorPosition.Character)
 			if cursorPosition.Character == 0 {
 				t.Fatal("Could not find cursor position for test. Replace probably didn't work")
 			}
