@@ -1,5 +1,8 @@
 # Jsonnet Language Server
 
+## Warning
+I won't maintain this fork any further. If you liked some of the new feature just use my [new LSP](https://github.com/koskev/grustonnet-ls).
+
 A **[Language Server Protocol (LSP)](https://langserver.org)** server for [Jsonnet](https://jsonnet.org).
 
 Master is (probably) always somehow broken or not tested on a complex codebase. Tags should be stable though
